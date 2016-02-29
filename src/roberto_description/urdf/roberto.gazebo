@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<robot>
+
+	<gazebo>
+	    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+	      <robotNamespace>/roberto</robotNamespace>
+	      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+	    </plugin>
+
+		<plugin name="roberto_gazebo_ros_control" filename="libroberto_gazebo_ros_control.so">
+			<robotNamespace>/roberto</robotNamespace>
+			<topicName>cmd_vel</topicName>
+		</plugin>
+
+		<plugin name="roberto_gazebo_mimic_joint_plugin" filename="libroberto_gazebo_mimic_joint_plugin.so">
+			<robotNamespace>/roberto</robotNamespace>
+			<joint>servo_rear_left</joint>
+			<mimicJoint>servo_front_left</mimicJoint>
+			<multiplier>-1</multiplier>
+		</plugin>
+
+		<plugin name="roberto_gazebo_mimic_joint_plugin" filename="libroberto_gazebo_mimic_joint_plugin.so">
+			<robotNamespace>/roberto</robotNamespace>
+			<joint>servo_rear_right</joint>
+			<mimicJoint>servo_front_right</mimicJoint>
+			<multiplier>-1</multiplier>
+		</plugin>
+	</gazebo>
+
+
+</robot>
