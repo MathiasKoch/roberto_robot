@@ -24,8 +24,11 @@ robocup 				- Contains information regarding DTU Robocup
 To set up a working ros install, with all required packages for Roberto to compile and run, start by installing ROS by following the tutorial on their site: (Roberto is only tested on ROS Indigo)
 http://wiki.ros.org/indigo/Installation/Ubuntu
 
-Furthermore a bunch of ros packages are needed in order for Roberto to run:
-```ros-indigo-rosserial-client ros-indigo-rosserial-arduino ros-indigo-rosserial-server ros-indigo-rosserial-msgs ros-indigo-rosserial-python ros-indigo-ros-control ros-indigo-ros-controllers```
+Furthermore a bunch of linux packages is required in order for the source code to compile:
+```sudo apt-get install libi2c-dev```
+
+To run the Roberto simulator, a bunch of ros packages are also needed in order to make it compile and run:
+```sudo apt-get install ros-indigo-rosserial-client ros-indigo-rosserial-arduino ros-indigo-rosserial-server ros-indigo-rosserial-msgs ros-indigo-rosserial-python ros-indigo-ros-control ros-indigo-ros-controllers```
 
 ### ARM and AVR compilers and tools
 
