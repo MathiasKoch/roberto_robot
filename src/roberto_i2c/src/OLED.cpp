@@ -1,12 +1,14 @@
 
+#include "ros/ros.h"
 #include "OLED_GFX.h"
 #include "OLED.h"
 #include "I2CBus.h"
 
   
 
-inline void OLED::fastI2Cwrite(char* tbuf, uint32_t len) {
-	_i2c.write(tbuf, len);
+void OLED::fastI2Cwrite(char* tbuf, uint32_t len) {
+	_i2c->addressSet(_i2c_addr);
+	_i2c->write(tbuf, len);
 }
 
 // the most basic function, set a single pixel
@@ -46,7 +48,7 @@ void OLED::drawPixel(int16_t x, int16_t y, uint16_t color)
 		*p &= ~(1<<(y%8)); 
 }
 
-void OLED::init(I2CBus i2c, int8_t i2c_addr, int8_t width, int8_t height) {
+void OLED::init(I2CBus *i2c, uint8_t i2c_addr, uint8_t width, uint8_t height) {
 
 	_i2c = i2c;
 	_i2c_addr = i2c_addr;
@@ -85,10 +87,10 @@ void OLED::begin(void){
 	
 	multiplex 	= 0x3F;
 	compins 	= 0x12;
-	contrast	= 0x9F;
+	contrast	= 0xCF;
 	
-	chargepump = 0x10;
-	precharge  = 0x22;
+	chargepump = 0x14;
+	precharge  = 0xF1;
 	
 	ssd1306_command(SSD_Display_Off);                    // 0xAE
 	ssd1306_command(SSD1306_SETDISPLAYCLOCKDIV, 0x80);      // 0xD5 + the suggested ratio 0x80
@@ -97,7 +99,7 @@ void OLED::begin(void){
 	ssd1306_command(SSD1306_SETSTARTLINE | 0x0);            // line #0
 	ssd1306_command(SSD1306_CHARGEPUMP, chargepump); 
 	ssd1306_command(SSD1306_MEMORYMODE, 0x00);              // 0x20 0x0 act like ks0108
-	ssd1306_command(SSD1306_SEGREMAP | 0x1);
+	ssd1306_command(SSD1306_SEGREMAP | 0x0);
 	ssd1306_command(SSD1306_COMSCANDEC);
 	ssd1306_command(SSD1306_SETCOMPINS, compins);  // 0xDA
 	ssd1306_command(SSD_Set_ContrastLevel, contrast);
@@ -108,13 +110,13 @@ void OLED::begin(void){
 
 	// Reset to default value in case of 
 	// no reset pin available on OLED
-	ssd1306_command(0x21, 0, 127); 
-	ssd1306_command(0x22, 0,   7); 
-	stopscroll();
+	//ssd1306_command(0x21, 0, 127); 
+	//ssd1306_command(0x22, 0,   7); 
+	//stopscroll();
 	
 	// Empty uninitialized buffer
 	clearDisplay();
-	ssd1306_command(SSD_Display_On);							//--turn on oled panel
+	ssd1306_command(SSD_Display_On);							//--turn on oled panel*/
 }
 
 
@@ -267,5 +269,5 @@ void OLED::display(void) {
 
 // clear everything (in the buffer)
 void OLED::clearDisplay(void) {
-  memset(poledbuff, 0, (ssd1306_lcdwidth*ssd1306_lcdheight/8));
+	memset(poledbuff, 0, (ssd1306_lcdwidth*ssd1306_lcdheight/8));
 }

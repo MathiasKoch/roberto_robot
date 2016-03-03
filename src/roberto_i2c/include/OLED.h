@@ -16,37 +16,37 @@
 
 //#define SSD_Command_Mode			0x80 	/* DC bit is 0 */ Seeed set C0 to 1 why ?
 #define SSD_Command_Mode			0x00 	/* C0 and DC bit are 0 				 */
-#define SSD_Data_Mode					0x40	/* C0 bit is 0 and DC bit is 1 */
+#define SSD_Data_Mode				0x40	/* C0 bit is 0 and DC bit is 1 */
 
-#define SSD_Inverse_Display		0xA7
+#define SSD_Inverse_Display		    0xA7
 
 #define SSD_Display_Off				0xAE
 #define SSD_Display_On				0xAF
 
-#define SSD_Set_ContrastLevel	0x81
+#define SSD_Set_ContrastLevel	    0x81
 
 #define SSD_External_Vcc			0x01
 #define SSD_Internal_Vcc			0x02
 
 
-#define SSD_Activate_Scroll		0x2F
-#define SSD_Deactivate_Scroll	0x2E
+#define SSD_Activate_Scroll		    0x2F
+#define SSD_Deactivate_Scroll	    0x2E
 
-#define Scroll_Left						0x00
-#define Scroll_Right					0x01
+#define Scroll_Left					0x00
+#define Scroll_Right				0x01
 
-#define Scroll_2Frames		0x07
-#define Scroll_3Frames		0x04
-#define Scroll_4Frames		0x05
-#define Scroll_5Frames		0x00
-#define Scroll_25Frames		0x06
-#define Scroll_64Frames		0x01
-#define Scroll_128Frames	0x02
-#define Scroll_256Frames	0x03
+#define Scroll_2Frames		        0x07
+#define Scroll_3Frames		        0x04
+#define Scroll_4Frames		        0x05
+#define Scroll_5Frames		        0x00
+#define Scroll_25Frames		        0x06
+#define Scroll_64Frames		        0x01
+#define Scroll_128Frames	        0x02
+#define Scroll_256Frames	        0x03
 
-#define VERTICAL_MODE						01
-#define PAGE_MODE								01
-#define HORIZONTAL_MODE					02
+#define VERTICAL_MODE				01
+#define PAGE_MODE					01
+#define HORIZONTAL_MODE				02
 
 
 /*=========================================================================
@@ -84,7 +84,7 @@
 
 class OLED : public OLED_GFX {
   public:
-    void init(I2CBus i2c, int8_t i2c_addr, int8_t width, int8_t height);
+    void init(I2CBus *i2c, uint8_t i2c_addr, uint8_t width, uint8_t height);
 
     void begin(void);
     void close(void);
@@ -110,8 +110,8 @@ class OLED : public OLED_GFX {
 	private:
     uint8_t *poledbuff;	// Pointer to OLED data buffer in memory
     int8_t _i2c_addr;
-    I2CBus _i2c;
-    int16_t ssd1306_lcdwidth, ssd1306_lcdheight;
+    I2CBus *_i2c;
+    uint8_t ssd1306_lcdwidth, ssd1306_lcdheight;
 
     void fastI2Cwrite(char* tbuf, uint32_t len);
 };

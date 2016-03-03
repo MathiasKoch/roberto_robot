@@ -29,6 +29,7 @@
 #include <fstream>
 #include <algorithm>
 #include <string.h>
+ #include "ros/ros.h"
 
 namespace GPIO {
 
@@ -72,10 +73,10 @@ GPIOManager::~GPIOManager() {
  */
 
 int GPIOManager::exportPin(unsigned int gpio) {
-  std::ofstream stream(SYSFS_GPIO_DIR "/export");
+  std::ofstream stream(SYSFS_GPIO_EXPORT_DIR "/export");
 
   if (stream < 0) {
-    fprintf(stderr, "OPERATION FAILED: Unable to export GPIO no. %u", gpio);
+    ROS_ERROR("OPERATION FAILED: Unable to export GPIO no. %u", gpio);
     return -1;
   }
 
@@ -91,10 +92,10 @@ int GPIOManager::exportPin(unsigned int gpio) {
  * Unexport pin (equivalent to i.e echo "68" > /sys/class/gpio/unexport)
  */
 int GPIOManager::unexportPin(unsigned int gpio) {
-  std::ofstream stream(SYSFS_GPIO_DIR "/unexport");
+  std::ofstream stream(SYSFS_GPIO_EXPORT_DIR "/unexport");
 
   if (stream < 0) {
-    fprintf(stderr, "OPERATION FAILED: Unable to unexport GPIO no. %u", gpio);
+    ROS_ERROR("OPERATION FAILED: Unable to unexport GPIO no. %u", gpio);
     return -1;
   }
 
@@ -118,8 +119,7 @@ int GPIOManager::setDirection(unsigned int gpio, DIRECTION direction) {
 
   std::ofstream stream(path);
   if (stream < 0) {
-    fprintf(stderr,
-            "OPERATION FAILED: Unable to set direction GPIO no. %u", gpio);
+    ROS_ERROR("OPERATION FAILED: Unable to set direction GPIO no. %u", gpio);
     return -1;
   }
 
@@ -143,8 +143,7 @@ int GPIOManager::getDirection(unsigned int gpio) {
 
   std::ifstream stream(path);
   if (stream < 0) {
-    fprintf(stderr,
-            "OPERATION FAILED: Unable to get direction GPIO no. %u", gpio);
+    ROS_ERROR("OPERATION FAILED: Unable to get direction GPIO no. %u", gpio);
     return -1;
   }
 
@@ -164,7 +163,7 @@ int GPIOManager::setValue(unsigned int gpio, PIN_VALUE value) {
 
   std::ofstream stream(path);
   if (stream < 0) {
-    fprintf(stderr, "OPERATION FAILED: Unable to set value GPIO no. %u", gpio);
+    ROS_ERROR("OPERATION FAILED: Unable to set value GPIO no. %u", gpio);
     return -1;
   }
 
@@ -183,7 +182,7 @@ int GPIOManager::getValue(unsigned int gpio) {
 
   std::ifstream stream(path);
   if (stream < 0) {
-    fprintf(stderr, "OPERATION FAILED: Unable to get value GPIO no. %u", gpio);
+    ROS_ERROR("OPERATION FAILED: Unable to get value GPIO no. %u", gpio);
     return -1;
   }
 
@@ -219,10 +218,9 @@ int GPIOManager::setEdge(unsigned int gpio, EDGE_VALUE value) {
 
   std::ofstream stream(path);
   if (stream < 0) {
-    fprintf(stderr, "OPERATION FAILED: Unable to set edge GPIO no. %d", gpio);
+    ROS_ERROR("OPERATION FAILED: Unable to set edge GPIO no. %d", gpio);
     return -1;
   }
-
   stream << getEdgeValueByIndex(value);
   stream.close();
 
@@ -238,7 +236,7 @@ int GPIOManager::getEdge(unsigned int gpio) {
 
    std::ifstream stream(path);
    if (stream < 0) {
-      fprintf(stderr, "OPERATION FAILED: Unable to get value GPIO no. %u", gpio);
+      ROS_ERROR("OPERATION FAILED: Unable to get value GPIO no. %u", gpio);
       return -1;
    }
 

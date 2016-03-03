@@ -26,7 +26,8 @@
 
 
 
-#define SYSFS_GPIO_DIR "/sys/class/gpio"
+#define SYSFS_GPIO_DIR "/sys/devices/virtual/gpio"
+#define SYSFS_GPIO_EXPORT_DIR "/sys/class/gpio"
 #include <vector>
 
 namespace GPIO {
