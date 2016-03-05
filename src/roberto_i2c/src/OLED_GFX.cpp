@@ -12,6 +12,15 @@ void OLED_GFX::constructor(int16_t w, int16_t h)
   textsize = 1;
   textcolor = textbgcolor = 0xFFFF;
   wrap = true;
+
+  poledbuff = NULL;
+
+  if (poledbuff)
+    free(poledbuff);
+    
+  // Allocate memory for OLED buffer
+  poledbuff = (uint8_t *) malloc ( (WIDTH*HEIGHT / 8 )); 
+
 }
 
 // the printf function
@@ -46,6 +55,41 @@ void OLED_GFX::print( const char * string)
 		write ( (uint8_t) *p++);
 	}
 
+}
+
+void OLED_GFX::drawPixel(int16_t x, int16_t y, uint16_t color) {
+  uint8_t * p = poledbuff ;
+  
+  if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
+    return;
+
+    // check rotation, move pixel around if necessary
+  switch (getRotation()) 
+  {
+    case 1:
+      swap(x, y);
+      x = WIDTH - x - 1;
+    break;
+    
+    case 2:
+      x = WIDTH - x - 1;
+      y = HEIGHT - y - 1;
+    break;
+    
+    case 3:
+      swap(x, y);
+      y = HEIGHT - y - 1;
+    break;
+  }  
+
+  // Get where to do the change in the buffer
+  p = poledbuff + (x + (y/8)*WIDTH );
+  
+  // x is which column
+  if (color == WHITE) 
+    *p |=  (1<<(y%8));  
+  else
+    *p &= ~(1<<(y%8)); 
 }
 
 
@@ -576,6 +620,11 @@ void OLED_GFX::invertDisplay(uint8_t i)
 {
   // do nothing, can be subclassed
 }
+
+void OLED_GFX::clearDisplay(void) {
+  memset(poledbuff, 0, (WIDTH*HEIGHT/8));
+}
+
 
 
 // return the size of the display which depends on the rotation!

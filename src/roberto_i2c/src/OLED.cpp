@@ -1,56 +1,19 @@
 
 #include "ros/ros.h"
-#include "OLED_GFX.h"
 #include "OLED.h"
 #include "I2CBus.h"
 
   
 
-void OLED::fastI2Cwrite(char* tbuf, uint32_t len) {
-	_i2c->addressSet(_i2c_addr);
-	_i2c->write(tbuf, len);
+int OLED::fastI2Cwrite(unsigned char cmd, unsigned char* tbuf, uint32_t len) {
+	if (!m_settings->I2CWrite(_i2c_addr, cmd, len, tbuf, "Failed to write display data"))
+        return false;
+    return true;
 }
 
-// the most basic function, set a single pixel
-void OLED::drawPixel(int16_t x, int16_t y, uint16_t color) 
-{
-	uint8_t * p = poledbuff ;
-	
-  if ((x < 0) || (x >= width()) || (y < 0) || (y >= height()))
-    return;
 
-		// check rotation, move pixel around if necessary
-	switch (getRotation()) 
-	{
-		case 1:
-			swap(x, y);
-			x = WIDTH - x - 1;
-		break;
-		
-		case 2:
-			x = WIDTH - x - 1;
-			y = HEIGHT - y - 1;
-		break;
-		
-		case 3:
-			swap(x, y);
-			y = HEIGHT - y - 1;
-		break;
-	}  
+void OLED::init(RTIMUSettings *settings, uint8_t i2c_addr, uint8_t width, uint8_t height) {
 
-	// Get where to do the change in the buffer
-	p = poledbuff + (x + (y/8)*ssd1306_lcdwidth );
-	
-	// x is which column
-	if (color == WHITE) 
-		*p |=  (1<<(y%8));  
-	else
-		*p &= ~(1<<(y%8)); 
-}
-
-void OLED::init(I2CBus *i2c, uint8_t i2c_addr, uint8_t width, uint8_t height) {
-
-	_i2c = i2c;
 	_i2c_addr = i2c_addr;
 	// Lcd size
 	ssd1306_lcdwidth  = width;
@@ -76,14 +39,17 @@ void OLED::close(void){
 	poledbuff = NULL;
 }
 	
-void OLED::begin(void){
+int OLED::begin(void){
 	uint8_t multiplex;
 	uint8_t chargepump;
 	uint8_t compins;
 	uint8_t contrast;
 	uint8_t precharge;
 
-	constructor(ssd1306_lcdwidth, ssd1306_lcdheight);
+	if (!m_settings->I2COpen())
+        return false;
+
+	//constructor(ssd1306_lcdwidth, ssd1306_lcdheight);
 	
 	multiplex 	= 0x3F;
 	compins 	= 0x12;
@@ -117,6 +83,7 @@ void OLED::begin(void){
 	// Empty uninitialized buffer
 	clearDisplay();
 	ssd1306_command(SSD_Display_On);							//--turn on oled panel*/
+	return true;
 }
 
 
@@ -129,37 +96,29 @@ void OLED::invertDisplay(uint8_t i)
 }
 
 void OLED::ssd1306_command(uint8_t c){ 
-	char buff[2] ;
-
-	// Clear D/C to switch to command mode
-	buff[0] = SSD_Command_Mode ; 
-	buff[1] = c;
-
 	// Write Data on I2C
-	fastI2Cwrite(buff, sizeof(buff));
+	fastI2Cwrite(SSD_Command_Mode, &c, sizeof(c));
 }
 
 void OLED::ssd1306_command(uint8_t c0, uint8_t c1) { 
-	char buff[3];
+	unsigned char buff[2];
 
-	buff[0] = SSD_Command_Mode;
-	buff[1] = c0;
-	buff[2] = c1;
+	buff[0] = c0;
+	buff[1] = c1;
 
 
 	// Write Data on I2C
-	fastI2Cwrite(buff, 3);
+	fastI2Cwrite(SSD_Command_Mode, buff, 2);
 }
 
 void OLED::ssd1306_command(uint8_t c0, uint8_t c1, uint8_t c2){ 
-	char buff[4];
-	buff[0] = SSD_Command_Mode; 
-	buff[1] = c0;
-	buff[2] = c1;
-	buff[3] = c2;
+	unsigned char buff[3];
+	buff[0] = c0;
+	buff[1] = c1;
+	buff[2] = c2;
 
 	// Write Data on I2C
-	fastI2Cwrite(buff, sizeof(buff));
+	fastI2Cwrite(SSD_Command_Mode, buff, sizeof(buff));
 }
 
 
@@ -232,14 +191,8 @@ void OLED::stopscroll(void){
 }
 
 void OLED::ssd1306_data(uint8_t c){
-	char buff[2] ;
-	
-	// Setup D/C to switch to data mode
-	buff[0] = SSD_Data_Mode; 
-	buff[1] = c;
-
 	// Write on i2c
-	fastI2Cwrite(buff, sizeof(buff));
+	fastI2Cwrite(SSD_Data_Mode, &c, sizeof(c));
 }
 
 void OLED::display(void) {
@@ -252,20 +205,22 @@ void OLED::display(void) {
 	// pointer to OLED data buffer
 	uint8_t * p = poledbuff;
 
-	char buff[17] ;
+	unsigned char buff[16] ;
 	uint8_t x ;
-
-	// Setup D/C to switch to data mode
-	buff[0] = SSD_Data_Mode; 
 
 		// loop trough all OLED buffer and 
     // send a bunch of 16 data byte in one xmission
     for (i=0; i<(ssd1306_lcdwidth*ssd1306_lcdheight/8); i+=16){
-    	for (x=1; x<=16; x++) 
+    	for (x=0; x<16; x++) 
 			buff[x] = *p++;
-		fastI2Cwrite(buff,  17);
+		fastI2Cwrite(SSD_Data_Mode, buff,  16);
     }
 }
+
+void OLED::setBuffer(uint8_t * buf) {
+	memcpy(poledbuff, buf, (ssd1306_lcdwidth*ssd1306_lcdheight/8));
+}
+
 
 // clear everything (in the buffer)
 void OLED::clearDisplay(void) {

@@ -1,80 +1,193 @@
 #include "I2CBus.h"
-#include "ros/ros.h"
-
-#include <fcntl.h>
-#include <linux/i2c-dev.h>
 
 
 // TODO: I2C Mutex lock?
 
-I2CBus::I2CBus(const char * deviceName){
-    fd = open(deviceName, O_RDWR);
-    if (fd == -1){
-        ROS_ERROR("Failed to open I2C device, returned errno %s",strerror(errno));
-    }
+I2CBus::I2CBus(){
+    m_I2CBus = 255;
+    m_currentSlave = 255;
+    m_I2C = -1;
 }
 
 I2CBus::~I2CBus(){
-    close(fd);
+    I2CClose();
 }
 
-void I2CBus::addressSet(uint8_t address){
-    int result = ioctl(fd, I2C_SLAVE, address);
-    if (result == -1){
-        ROS_ERROR("Failed to set I2C address, returned errno %s",strerror(errno));
+
+bool I2CBus::I2COpen(){
+    char buf[32];
+
+    if (m_I2C >= 0)
+        return true;
+
+    if (m_I2CBus == 255) {
+        ROS_ERROR("No I2C bus has been set\n");
+        return false;
     }
-}
-
-void I2CBus::writeByte(uint8_t command, uint8_t data){
-    int result = i2c_smbus_write_byte_data(fd, command, data);
-    if (result == -1){
-        ROS_ERROR("Failed to write byte to I2C, returned errno %s",strerror(errno));
+    sprintf(buf, "/dev/i2c-%d", m_I2CBus);
+    m_I2C = open(buf, O_RDWR);
+    if (m_I2C < 0) {
+        ROS_ERROR("Failed to open I2C bus %d\n", m_I2CBus);
+        m_I2C = -1;
+        return false;
     }
-}
-
-void I2CBus::write(const char * buf, uint32_t len){
-    int result = -1 ;
     
-    if(!fd)
-        return;
+    return true;
+}
 
-    // Do simple use of I2C smbus command regarding number of bytes to transfer
-    // Write 1 byte
-    if (len == 2)
-        result = i2c_smbus_write_byte_data(fd, buf[0], buf[1]);
-    // Write 1 word
-    else if (len == 3)
-        result = i2c_smbus_write_word_data(fd, buf[0], (buf[2]<<8) | buf[1] );
-    // Write bulk data
-    else 
-        result = i2c_smbus_write_i2c_block_data(fd, buf[0], len-1, (const __u8 *) &buf[1]);
+void I2CBus::I2CClose(){
+    if (m_I2C >= 0) {
+        close(m_I2C);
+        m_I2C = -1;
+        m_currentSlave = 255;
+    }
+}
 
-    if (result == -1){
-        ROS_ERROR("Failed to write to I2C, returned errno %s",strerror(errno));
+bool I2CBus::I2CWrite(unsigned char slaveAddr, unsigned char regAddr,
+                   unsigned char const data, const char *errorMsg)
+{
+    return I2CWrite(slaveAddr, regAddr, 1, &data, errorMsg);
+}
+
+bool I2CBus::I2CWrite(unsigned char slaveAddr, unsigned char regAddr,
+                   unsigned char length, unsigned char const *data, const char *errorMsg){
+    int result;
+    unsigned char txBuff[MAX_WRITE_LEN + 1];
+
+    if (!I2CSelectSlave(slaveAddr, errorMsg))
+        return false;
+
+
+    if (length == 0) {
+        result = write(m_I2C, &regAddr, 1);
+
+        if (result < 0) {
+            if (strlen(errorMsg) > 0)
+                ROS_ERROR("I2C write of regAddr failed - %s\n", errorMsg);
+            return false;
+        } else if (result != 1) {
+            if (strlen(errorMsg) > 0)
+                ROS_ERROR("I2C write of regAddr failed (nothing written) - %s\n", errorMsg);
+            return false;
+        }
+    } else {
+        txBuff[0] = regAddr;
+        memcpy(txBuff + 1, data, length);
+
+        result = write(m_I2C, txBuff, length + 1);
+
+        if (result < 0) {
+            if (strlen(errorMsg) > 0)
+                ROS_ERROR("I2C data write of %d bytes failed - %s\n", length, errorMsg);
+            return false;
+        } else if (result < (int)length) {
+            if (strlen(errorMsg) > 0)
+                ROS_ERROR("I2C data write of %d bytes failed, only %d written - %s\n", length, result, errorMsg);
+            return false;
+        }
+    }
+    return true;
+}
+
+
+bool I2CBus::I2CRead(unsigned char slaveAddr, unsigned char regAddr, unsigned char length,
+                    unsigned char *data, const char *errorMsg){
+    int tries, result, total;
+    unsigned char rxBuff[MAX_READ_LEN + 1];
+
+    if (!I2CWrite(slaveAddr, regAddr, 0, NULL, errorMsg))
+        return false;
+
+    total = 0;
+    tries = 0;
+
+    while ((total < length) && (tries < 5)) {
+        result = read(m_I2C, data + total, length - total);
+
+        if (result < 0) {
+            if (strlen(errorMsg) > 0)
+                ROS_ERROR("I2C read error from %d, %d - %s\n", slaveAddr, regAddr, errorMsg);
+            return false;
+        }
+
+        total += result;
+
+        if (total == length)
+            break;
+
+        //delayMs(10);
+        tries++;
     }
 
-}
-
-uint8_t I2CBus::readByte(uint8_t command){
-    int result = i2c_smbus_read_byte_data(fd, command);
-    if (result == -1){
-        ROS_ERROR("Failed to read byte from I2C, returned errno %s",strerror(errno));
+    if (total < length) {
+        if (strlen(errorMsg) > 0)
+            ROS_ERROR("I2C read from %d, %d failed - %s\n", slaveAddr, regAddr, errorMsg);
+        return false;
     }
-    return result;
+    
+    return true;
 }
 
-int I2CBus::tryReadByte(uint8_t command){
-    return i2c_smbus_read_byte_data(fd, command);
-}
+bool I2CBus::I2CRead(unsigned char slaveAddr, unsigned char length,
+                    unsigned char *data, const char *errorMsg){
+    int tries, result, total;
+    unsigned char rxBuff[MAX_READ_LEN + 1];
 
-uint8_t I2CBus::tryRead(uint8_t address){
-    addressSet(address);
-    return i2c_smbus_read_byte(fd);
-}
+    if (!I2CSelectSlave(slaveAddr, errorMsg))
+        return false;
 
-void I2CBus::readBlock(uint8_t command, uint8_t size, uint8_t * data){
-    int result = i2c_smbus_read_i2c_block_data(fd, command, size, data);
-    if (result != size){
-        ROS_ERROR("Failed to read block from I2C, returned errno %s",strerror(errno));
+    total = 0;
+    tries = 0;
+
+    while ((total < length) && (tries < 5)) {
+        result = read(m_I2C, data + total, length - total);
+
+        if (result < 0) {
+            if (strlen(errorMsg) > 0)
+                ROS_ERROR("I2C read error from %d - %s\n", slaveAddr, errorMsg);
+            return false;
+        }
+
+        total += result;
+
+        if (total == length)
+            break;
+
+        //delayMs(10);
+        tries++;
     }
+
+    if (total < length) {
+        if (strlen(errorMsg) > 0)
+            ROS_ERROR("I2C read from %d failed - %s\n", slaveAddr, errorMsg);
+        return false;
+    }
+   
+    return true;
+}
+
+
+bool I2CBus::I2CSelectSlave(unsigned char slaveAddr, const char *errorMsg)
+{
+    if (m_currentSlave == slaveAddr)
+        return true;
+
+    if (!I2COpen()) {
+        ROS_ERROR("Failed to open I2C port - %s\n", errorMsg);
+        return false;
+    }
+
+    if (ioctl(m_I2C, I2C_SLAVE, slaveAddr) < 0) {
+        ROS_ERROR("I2C slave select %d failed - %s\n", slaveAddr, errorMsg);
+        return false;
+    }
+
+    m_currentSlave = slaveAddr;
+
+    return true;
+}
+
+void I2CBus::delayMs(int milliSeconds)
+{
+    usleep(1000 * milliSeconds);
 }

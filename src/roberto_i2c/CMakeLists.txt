@@ -25,7 +25,11 @@ add_executable(${PROJECT_NAME}
 	src/I2CBus.cpp
 	src/OLED.cpp
 	src/OLED_GFX.cpp
-	#src/mpu9150.cpp
+	src/RTFusionRTQF.cpp
+	src/RTIMU.cpp
+	src/RTIMUMPU9150.cpp
+	src/RTIMUSettings.cpp
+	src/RTMath.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}

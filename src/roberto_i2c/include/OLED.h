@@ -1,8 +1,8 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include "OLED_GFX.h"
 #include "I2CBus.h"
+#include "RTIMUSettings.h"
 
 #define BLACK 0
 #define WHITE 1
@@ -82,36 +82,40 @@
 #define SSD1306_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL		0x2A
 
 
-class OLED : public OLED_GFX {
-  public:
-    void init(I2CBus *i2c, uint8_t i2c_addr, uint8_t width, uint8_t height);
+class OLED {
+    public:
+        void init(RTIMUSettings *settings, uint8_t i2c_addr, uint8_t width, uint8_t height);
 
-    void begin(void);
-    void close(void);
+        int begin(void);
+        void close(void);
 
-    void ssd1306_command(uint8_t c);
-    void ssd1306_command(uint8_t c0, uint8_t c1);
-    void ssd1306_command(uint8_t c0, uint8_t c1, uint8_t c2);
-    void ssd1306_data(uint8_t c);
+        void ssd1306_command(uint8_t c);
+        void ssd1306_command(uint8_t c0, uint8_t c1);
+        void ssd1306_command(uint8_t c0, uint8_t c1, uint8_t c2);
+        void ssd1306_data(uint8_t c);
 
-    void clearDisplay(void);
-    void invertDisplay(uint8_t i);
-    void display();
+        void clearDisplay(void);
+        void invertDisplay(uint8_t i);
+        void display();
 
-    void startscrollright(uint8_t start, uint8_t stop);
-    void startscrollleft(uint8_t start, uint8_t stop);
+        void startscrollright(uint8_t start, uint8_t stop);
+        void startscrollleft(uint8_t start, uint8_t stop);
 
-    void startscrolldiagright(uint8_t start, uint8_t stop);
-    void startscrolldiagleft(uint8_t start, uint8_t stop);
-    void stopscroll(void);
+        void startscrolldiagright(uint8_t start, uint8_t stop);
+        void startscrolldiagleft(uint8_t start, uint8_t stop);
+        void stopscroll(void);
 
-    void drawPixel(int16_t x, int16_t y, uint16_t color);
+        //void drawPixel(int16_t x, int16_t y, uint16_t color);
 
-	private:
-    uint8_t *poledbuff;	// Pointer to OLED data buffer in memory
-    int8_t _i2c_addr;
-    I2CBus *_i2c;
-    uint8_t ssd1306_lcdwidth, ssd1306_lcdheight;
+        void setBuffer(uint8_t * buf);
 
-    void fastI2Cwrite(char* tbuf, uint32_t len);
+    protected:
+        RTIMUSettings *m_settings;                              // the settings object pointer
+
+    private:
+        uint8_t *poledbuff;	// Pointer to OLED data buffer in memory
+        int8_t _i2c_addr;
+        uint8_t ssd1306_lcdwidth, ssd1306_lcdheight;
+
+        int fastI2Cwrite(unsigned char cmd, unsigned char* tbuf, uint32_t len);
 };
