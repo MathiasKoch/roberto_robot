@@ -31,6 +31,7 @@ class RTIMUSettings : public I2CBus
 {
 public:
     RTIMUSettings();
+    ~RTIMUSettings();
 	bool discoverIMU(int& imuType, unsigned char& slaveAddress);
 
     //  These are the local variables
@@ -40,13 +41,15 @@ public:
 
     //  IMU-specific vars
 
-    //  MPU9150
+    //  MPU9250
 
-    int m_MPU9150GyroAccelSampleRate;                       // the sample rate (samples per second) for gyro and accel
-    int m_MPU9150CompassSampleRate;                         // same for the compass
-    int m_MPU9150GyroAccelLpf;                              // low pass filter code for the gyro and accel
-    int m_MPU9150GyroFsr;                                   // FSR code for the gyro
-    int m_MPU9150AccelFsr;                                  // FSR code for the accel
+    int m_MPU9250GyroAccelSampleRate;                       // the sample rate (samples per second) for gyro and accel
+    int m_MPU9250CompassSampleRate;                         // same for the compass
+    int m_MPU9250GyroFsr;                                   // FSR code for the gyro
+    int m_MPU9250AccelFsr;                                  // FSR code for the accel
+    int m_MPU9250GyroLpf;                                   // low pass filter code for the gyro
+    int m_MPU9250AccelLpf;                                  // low pass filter code for the accel
+
 };
 
 #endif // _RTIMUSETTINGS_H

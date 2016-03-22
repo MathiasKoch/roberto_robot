@@ -22,7 +22,7 @@
 //  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "RTIMUSettings.h"
-#include "RTIMUMPU9150.h"
+#include "RTIMUMPU9250.h"
 
 #define RATE_TIMER_INTERVAL 2
 
@@ -33,13 +33,18 @@ RTIMUSettings::RTIMUSettings()
     m_imuType = RTIMU_TYPE_AUTODISCOVER;
     m_I2CSlaveAddress = 0;
 
-    //  MPU9150 defaults
+    //  MPU9250 defaults
 
-    m_MPU9150GyroAccelSampleRate = 50;
-    m_MPU9150CompassSampleRate = 25;
-    m_MPU9150GyroAccelLpf = MPU9150_LPF_20;
-    m_MPU9150GyroFsr = MPU9150_GYROFSR_1000;
-    m_MPU9150AccelFsr = MPU9150_ACCELFSR_8;
+    m_MPU9250GyroAccelSampleRate = 80;
+    m_MPU9250CompassSampleRate = 40;
+    m_MPU9250GyroLpf = MPU9250_GYRO_LPF_41;
+    m_MPU9250AccelLpf = MPU9250_ACCEL_LPF_41;
+    m_MPU9250GyroFsr = MPU9250_GYROFSR_1000;
+    m_MPU9250AccelFsr = MPU9250_ACCELFSR_8;
+}
+
+RTIMUSettings::~RTIMUSettings(){
+
 }
 
 bool RTIMUSettings::discoverIMU(int& imuType, unsigned char& slaveAddress)
@@ -49,18 +54,18 @@ bool RTIMUSettings::discoverIMU(int& imuType, unsigned char& slaveAddress)
 
     if (I2COpen()){
 
-        if (I2CRead(MPU9150_ADDRESS0, MPU9150_WHO_AM_I, &result, "")) {
-            if (result == MPU9150_ID) {
-                imuType = RTIMU_TYPE_MPU9150;
-                slaveAddress = MPU9150_ADDRESS0;
+        if (I2CRead(MPU9250_ADDRESS0, MPU9250_WHO_AM_I, &result, "")) {
+            if (result == MPU9250_ID) {
+                imuType = RTIMU_TYPE_MPU9250;
+                slaveAddress = MPU9250_ADDRESS0;
                 return true;
             }
         }
 
-        if (I2CRead(MPU9150_ADDRESS1, MPU9150_WHO_AM_I, &result, "")) {
-            if (result == MPU9150_ID) {
-                imuType = RTIMU_TYPE_MPU9150;
-                slaveAddress = MPU9150_ADDRESS1;
+        if (I2CRead(MPU9250_ADDRESS1, MPU9250_WHO_AM_I, &result, "")) {
+            if (result == MPU9250_ID) {
+                imuType = RTIMU_TYPE_MPU9250;
+                slaveAddress = MPU9250_ADDRESS1;
                 return true;
             }
         }

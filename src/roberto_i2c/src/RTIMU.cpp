@@ -25,13 +25,13 @@
 #include "RTIMUSettings.h"
 //#include "CalLib.h"
 
-#include "RTIMUMPU9150.h"
+#include "RTIMUMPU9250.h"
 
 RTIMU *RTIMU::createIMU(RTIMUSettings *settings)
 {
     switch (settings->m_imuType) {
-	    case RTIMU_TYPE_MPU9150:
-	        return new RTIMUMPU9150(settings);
+	    case RTIMU_TYPE_MPU9250:
+	        return new RTIMUMPU9250(settings);
 			
 	    case RTIMU_TYPE_AUTODISCOVER:
 	        if (settings->discoverIMU(settings->m_imuType, settings->m_I2CSlaveAddress)) {
@@ -46,7 +46,7 @@ RTIMU *RTIMU::createIMU(RTIMUSettings *settings)
 
 
 RTIMU::RTIMU(RTIMUSettings *settings)
-{
+{	
     m_settings = settings;
 
     m_calibrationMode = false;

@@ -27,7 +27,7 @@ add_executable(${PROJECT_NAME}
 	src/OLED_GFX.cpp
 	src/RTFusionRTQF.cpp
 	src/RTIMU.cpp
-	src/RTIMUMPU9150.cpp
+	src/RTIMUMPU9250.cpp
 	src/RTIMUSettings.cpp
 	src/RTMath.cpp
 )

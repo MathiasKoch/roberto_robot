@@ -30,7 +30,6 @@
 
 RTIMUMPU9150::RTIMUMPU9150(RTIMUSettings *settings) : RTIMU(settings)
 {
-
 }
 
 RTIMUMPU9150::~RTIMUMPU9150()
@@ -140,8 +139,7 @@ bool RTIMUMPU9150::setAccelFsr(unsigned char fsr)
 }
 
 
-int RTIMUMPU9150::IMUInit()
-{
+bool RTIMUMPU9150::IMUInit(){
     unsigned char result;
     int loop;
     unsigned char asa[3];
@@ -152,7 +150,6 @@ int RTIMUMPU9150::IMUInit()
     m_cacheIn = m_cacheOut = m_cacheCount = 0;
 #endif
     //  configure IMU
-
     m_slaveAddr = m_settings->m_I2CSlaveAddress;
     setSampleRate(m_settings->m_MPU9150GyroAccelSampleRate);
     setCompassRate(m_settings->m_MPU9150CompassSampleRate);

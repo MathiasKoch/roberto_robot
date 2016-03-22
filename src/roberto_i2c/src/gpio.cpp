@@ -29,7 +29,7 @@
 #include <fstream>
 #include <algorithm>
 #include <string.h>
- #include "ros/ros.h"
+#include "ros/ros.h"
 
 namespace GPIO {
 
@@ -65,7 +65,7 @@ GPIOManager::GPIOManager() {
  * On destruct clean all exported pins
  */
 GPIOManager::~GPIOManager() {
-  this->clean();
+  //this->clean();
 }
 
 /**
@@ -251,7 +251,7 @@ int GPIOManager::getEdge(unsigned int gpio) {
  */
 int GPIOManager::waitForEdge(unsigned int gpio, EDGE_VALUE value) {
   char path[50], buf;
-  int efd, fd;
+  int efd, fd, result;
   struct epoll_event events, ev;
 
   snprintf(path, sizeof(path), SYSFS_GPIO_DIR "/gpio%u/value", gpio);
@@ -275,7 +275,8 @@ int GPIOManager::waitForEdge(unsigned int gpio, EDGE_VALUE value) {
 
   // Ignore the first read (initial value)
   for (int i = 0; i < 2; i++) {
-    if ((epoll_wait(efd, &events, 1, -1)) == -1) {
+    result = epoll_wait(efd, &events, 1, 500);
+    if (result == -1) {
       return -1;
     }
   }
@@ -288,7 +289,7 @@ int GPIOManager::waitForEdge(unsigned int gpio, EDGE_VALUE value) {
   close(efd);
   close(fd);
 
-  return 0;
+  return result;
 }
 
 /**

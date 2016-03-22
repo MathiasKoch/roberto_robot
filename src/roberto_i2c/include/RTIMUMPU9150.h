@@ -125,7 +125,7 @@ public:
 
     virtual const char *IMUName() { return "MPU-9150"; }
     virtual int IMUType() { return RTIMU_TYPE_MPU9150; }
-    virtual int IMUInit();
+    virtual bool IMUInit();
     virtual bool IMURead();
     virtual int IMUGetPollInterval();
     virtual bool IMUGyroBiasValid() { return !m_gyroLearning; }
@@ -141,7 +141,6 @@ private:
     bool m_firstTime;                                       // if first sample
 
     unsigned char m_slaveAddr;                              // I2C address of MPU9150
-    unsigned char m_bus;                                    // I2C bus (usually 1 for Raspberry Pi for example)
 
     unsigned char m_lpf;                                    // low pass filter setting
     int m_sampleRate;                                       // sample rate in Hz for gyro and accel

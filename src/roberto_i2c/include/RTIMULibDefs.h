@@ -29,6 +29,6 @@
 //  IMU type codes
 
 #define RTIMU_TYPE_AUTODISCOVER             0                   // Auto discover IMU type and address
-#define RTIMU_TYPE_MPU9150                  1                   // InvenSense MPU9150
+#define RTIMU_TYPE_MPU9250                  1                   // InvenSense MPU9250
 
 #endif // _RTIMULIBDEFS_H

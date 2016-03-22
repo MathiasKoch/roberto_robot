@@ -1,7 +1,5 @@
 
-#include "ros/ros.h"
 #include "OLED.h"
-#include "I2CBus.h"
 
   
 
@@ -13,7 +11,7 @@ int OLED::fastI2Cwrite(unsigned char cmd, unsigned char* tbuf, uint32_t len) {
 
 
 void OLED::init(RTIMUSettings *settings, uint8_t i2c_addr, uint8_t width, uint8_t height) {
-
+	m_settings = settings;
 	_i2c_addr = i2c_addr;
 	// Lcd size
 	ssd1306_lcdwidth  = width;

@@ -1,5 +1,6 @@
 #include <boost/thread.hpp>
 #include <signal.h>
+#include <ros/xmlrpc_manager.h>
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "std_msgs/UInt8MultiArray.h"
@@ -12,11 +13,12 @@
 #include "RTFusionRTQF.h"
 
 
-#define SHUTDOWN_PIN 0x10
-#define BUTTON_LEFT_PIN 0x01
-#define BUTTON_UP_PIN 0x02
-#define BUTTON_DOWN_PIN 0x04
-#define BUTTON_RIGHT_PIN 0x08
+#define BUTTON_LEFT_PIN (1 << 1)
+#define BUTTON_UP_PIN (1 << 2)
+#define BUTTON_DOWN_PIN (1 << 3)
+#define BUTTON_RIGHT_PIN (1 << 4)
+#define SHUTDOWN_PIN (1 << 5)
+#define IMU_INT_PIN (1 << 6)
 
 bool newButtons = false;
 bool shutdown = false;
@@ -31,9 +33,31 @@ RTIMU *imu;                                           // the IMU object
 RTFusionRTQF fusion;                                  // the fusion object
 RTIMUSettings settings;                               // the settings object
 
-OLED *displayR;
-OLED *displayL;
+//OLED *displayR;
+//OLED *displayL;
 
+sig_atomic_t volatile g_request_shutdown = 0;
+
+void mySigIntHandler(int sig)
+{
+  g_request_shutdown = 1;
+}
+
+
+void shutdownCallback(XmlRpc::XmlRpcValue& params, XmlRpc::XmlRpcValue& result)
+{
+  int num_params = 0;
+  if (params.getType() == XmlRpc::XmlRpcValue::TypeArray)
+    num_params = params.size();
+  if (num_params > 1)
+  {
+    std::string reason = params[1];
+    ROS_WARN("Shutdown request received. Reason: [%s]", reason.c_str());
+    g_request_shutdown = 1; // Set flag
+  }
+
+  result = ros::xmlrpc::responseInt(1, "", 0);
+}
 
 
 void interruptThread(){
@@ -46,41 +70,54 @@ void interruptThread(){
 	boost::this_thread::sleep(boost::posix_time::milliseconds(500));
 
 	uint8_t byte;
+	settings.I2CRead(GPIO_ADDR, 1, &byte, "Failed to read GPIO Expander");
+	boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+
+	uint8_t initial;
+	settings.I2CRead(GPIO_ADDR, 1, &initial, "Failed to read GPIO Expander");
     while(true){
         try{
-  			gp->waitForEdge(interrupt_pin, GPIO::FALLING);		// Blocking!
-  			settings.I2CRead(GPIO_ADDR, 1, &byte, "Failed to read GPIO Expander");
-  			if(!(byte & SHUTDOWN_PIN)){
-  				ROS_INFO("Shutdown was clicked!");
-  				//shutdown = true;
-  			}
-  			if(!(byte & BUTTON_LEFT_PIN)){
-  				ROS_INFO("LEFT was clicked!");
-  				newButtons = true;
-  			}
-  			if(!(byte & BUTTON_UP_PIN)){
-  				ROS_INFO("UP was clicked!");
-  				newButtons = true;
-  			}
-  			if(!(byte & BUTTON_DOWN_PIN)){
-  				ROS_INFO("DOWN was clicked!");
-  				newButtons = true;
-  			}
-  			if(!(byte & BUTTON_RIGHT_PIN)){
-  				ROS_INFO("RIGHT was clicked!");
-  				newButtons = true;
-  			}
-            boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+  			if(gp->waitForEdge(interrupt_pin, GPIO::FALLING) > 0){		// Blocking!
+	  			settings.I2CRead(GPIO_ADDR, 1, &byte, "Failed to read GPIO Expander");
+		  			ROS_INFO("Done reading: %x", byte);
+	  			if(byte != initial){	// Only if any pins are different from initial state
+
+		  			if((byte & SHUTDOWN_PIN) != (initial & SHUTDOWN_PIN)){
+		  				ROS_INFO("Shutdown was clicked!");
+		  				shutdown = true;
+		  			}
+		  			if((byte & BUTTON_LEFT_PIN) != (initial & BUTTON_LEFT_PIN)){
+		  				ROS_INFO("LEFT was clicked!");
+		  				newButtons = true;
+		  			}
+		  			if((byte & BUTTON_UP_PIN) != (initial & BUTTON_UP_PIN)){
+		  				ROS_INFO("UP was clicked!");
+		  				newButtons = true;
+		  			}
+		  			if((byte & BUTTON_DOWN_PIN) != (initial & BUTTON_DOWN_PIN)){
+		  				ROS_INFO("DOWN was clicked!");
+		  				newButtons = true;
+		  			}
+		  			if((byte & BUTTON_RIGHT_PIN) != (initial & BUTTON_RIGHT_PIN)){
+		  				ROS_INFO("RIGHT was clicked!");
+		  				newButtons = true;
+		  			}
+		  			if((byte & IMU_INT_PIN) != (initial & IMU_INT_PIN)){
+		  				ROS_INFO("IMU interrupt triggered!");
+		  			}
+		  		}
+		  	}
+            boost::this_thread::interruption_point();
         }catch(boost::thread_interrupted&){
         	gp->clean();
-			ROS_INFO("Cleaning GPIO!");
+			ROS_INFO("Cleaning GPIO & closing I2C!");
 
-            return;
+        	return;
         }
     }
 }
 
-void displayRCallback(const std_msgs::UInt8MultiArray::ConstPtr& msg){
+/*void displayRCallback(const std_msgs::UInt8MultiArray::ConstPtr& msg){
 	displayR->setBuffer((uint8_t*)&msg->data);
 	displayR->display();
 }
@@ -88,12 +125,16 @@ void displayRCallback(const std_msgs::UInt8MultiArray::ConstPtr& msg){
 void displayLCallback(const std_msgs::UInt8MultiArray::ConstPtr& msg){
 	displayL->setBuffer((uint8_t*)&msg->data);
 	displayL->display();
-}
+}*/
 
 int main(int argc, char **argv){
 	// Set up ROS.
-	ros::init(argc, argv, "i2c_node");
+	ros::init(argc, argv, "i2c_node", ros::init_options::NoSigintHandler);
+	signal(SIGINT, mySigIntHandler);
 	ros::NodeHandle n;
+
+	ros::XMLRPCManager::instance()->unbind("shutdown");
+  	ros::XMLRPCManager::instance()->bind("shutdown", shutdownCallback);
 
 	// Parameters - 	TODO: attach parameter server
 	
@@ -101,47 +142,53 @@ int main(int argc, char **argv){
 	GPIO_ADDR = 0x38;
 	DISPLAYR_ADDR = 0x3D;
 	DISPLAYL_ADDR = 0x3C;
+	settings.m_I2CBus = 4;	// /dev/i2c-4
+	settings.m_imuType = RTIMU_TYPE_MPU9250;
+	settings.m_I2CSlaveAddress = 0x69;
 
-	settings.m_I2CBus = '4';	// /dev/i2c-4
+	ROS_INFO("BASIC STUFF DONE");
+
 
 	// Initialize both OLED displays on I2C bus
+	/*displayR = new OLED();
 	displayR->init(&settings, DISPLAYR_ADDR, 128, 64);
 	displayR->begin();
 	displayR->display();
 
+	displayL = new OLED();
 	displayL->init(&settings, DISPLAYL_ADDR, 128, 64);
 	displayL->begin();
-	displayL->display();
+	displayL->display();*/
 
 	// Start interrupt thread
 	boost::thread t(&interruptThread);
   	
 	// Setup ROS topics - publishers and subscribers
-	ros::Subscriber sub_oledR = n.subscribe("displayR", 100, displayRCallback);
-	ros::Subscriber sub_oledL = n.subscribe("displayL", 100, displayLCallback);
+	//ros::Subscriber sub_oledR = n.subscribe("displayR", 100, displayRCallback);
+	//ros::Subscriber sub_oledL = n.subscribe("displayL", 100, displayLCallback);
+	ros::Publisher imu_pub_ = n.advertise<sensor_msgs::Imu>("imu", 100);
+
 	ros::Publisher pub_battery_stats = n.advertise<std_msgs::String>("battery_stats", 10);
 	ros::Publisher pub_battery_diag = n.advertise<std_msgs::String>("battery_diag", 10);
-	ros::Publisher imu_pub_ = n.advertise<sensor_msgs::Imu>("imu", 100);
 	ros::Publisher pub_buttons = n.advertise<std_msgs::String>("buttons", 10);
 
-
+	// TODO: IMU Calibration still commented out!
+	// TODO: LPS25H barometer still not included in software
 	imu = RTIMU::createIMU(&settings);                        // create the imu object
 
-	if (imu->IMUInit() < 0) {
+	if (!imu->IMUInit()) {
     	ROS_ERROR("Failed to init IMU");
   	}
-  
+  /*
   	if (imu->getCalibrationValid())
     	ROS_WARN("Using compass calibration");
   	else
-    	ROS_WARN("No valid compass calibration data");
-
+    	ROS_WARN("No valid compass calibration data");*/
 
 	// Tell ROS how fast to run this node.
 	ros::Rate r(100);
-
 	sensor_msgs::Imu imu_msg;
-	while (ros::ok()){
+	while (!g_request_shutdown){
 		// Read and publish IMU data
 		if (imu->IMURead()) {                                // get the latest data if ready yet
 
@@ -170,7 +217,7 @@ int main(int argc, char **argv){
 			imu_msg.linear_acceleration.x = accel.x();// * G_2_MPSS;
 			imu_msg.linear_acceleration.y = accel.y();// * G_2_MPSS;
 			imu_msg.linear_acceleration.z = accel.z();// * G_2_MPSS;
-
+			ROS_INFO("Publishing data!");
 			imu_pub_.publish(imu_msg);
 		}
 
@@ -191,16 +238,25 @@ int main(int argc, char **argv){
 		}
 
 		if(shutdown){
-			ros::shutdown();
+			g_request_shutdown = true;
 		}
 		ros::spinOnce();
 		r.sleep();
+
 	}
-	displayR->close();
-	displayL->close();
+
+	// Clean up
+	/*displayR->close();
+	displayL->close();*/
 
 	t.interrupt();
 	t.join();
+	settings.I2CClose();
+	
+	ros::shutdown();
+	// Sleep for half a second to allow threads to join in
+	ros::Duration(0,500000000).sleep();
+
 
 
 	ROS_INFO("Shutdown!");

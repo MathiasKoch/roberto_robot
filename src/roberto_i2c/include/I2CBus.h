@@ -14,6 +14,7 @@
 #include <linux/i2c-dev.h>
 
 #include "ros/ros.h"
+#include "ros/time.h"
 
 #define MAX_WRITE_LEN                   255
 #define MAX_READ_LEN                    255

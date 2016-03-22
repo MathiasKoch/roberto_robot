@@ -1,8 +1,10 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include "ros/ros.h"
 #include "I2CBus.h"
 #include "RTIMUSettings.h"
+
 
 #define BLACK 0
 #define WHITE 1
@@ -81,6 +83,7 @@
 #define SSD1306_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL 	0x29
 #define SSD1306_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL		0x2A
 
+class RTIMUSettings;
 
 class OLED {
     public:
