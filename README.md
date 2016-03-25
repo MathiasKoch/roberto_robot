@@ -28,7 +28,7 @@ Furthermore a bunch of linux packages is required in order for the source code t
 ```sudo apt-get install libi2c-dev```
 
 To run the Roberto simulator, a bunch of ros packages are also needed in order to make it compile and run:
-```sudo apt-get install ros-indigo-rosserial-client ros-indigo-rosserial-arduino ros-indigo-rosserial-server ros-indigo-rosserial-msgs ros-indigo-rosserial-python ros-indigo-ros-control ros-indigo-ros-controllers```
+```sudo apt-get install ros-indigo-rosserial-client ros-indigo-rosserial-arduino ros-indigo-rosserial-server ros-indigo-rosserial-msgs ros-indigo-rosserial-python ros-indigo-ros-control ros-indigo-ros-controllers ros-indigo-usb-cam```
 
 ### ARM and AVR compilers and tools
 
