@@ -10,7 +10,7 @@ I2CBus::I2CBus(){
 }
 
 I2CBus::~I2CBus(){
-    //I2CClose();
+    I2CClose();
 }
 
 

@@ -22,6 +22,8 @@
 //  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "RTIMU.h"
+#include "ros/ros.h"
+
 #include "RTIMUSettings.h"
 //#include "CalLib.h"
 
@@ -59,33 +61,44 @@ RTIMU::~RTIMU()
 
 void RTIMU::setCalibrationData()
 {
-    /*float maxDelta = -1;
+    float maxDelta = -1;
     float delta;
-	CALLIB_DATA calData;                                    
 
-	m_calibrationValid = false;
+    if (m_settings->m_compassCalValid) {
+        //  find biggest range
 
-	if (calLibRead(0, &calData)) {					
-		if (calData.magValid != 1) {
-			return;
-		}
+        for (int i = 0; i < 3; i++) {
+            if ((m_settings->m_compassCalMax.data(i) - m_settings->m_compassCalMin.data(i)) > maxDelta)
+                maxDelta = m_settings->m_compassCalMax.data(i) - m_settings->m_compassCalMin.data(i);
+        }
+        if (maxDelta < 0) {
+            ROS_ERROR("Error in compass calibration data");
+            return;
+        }
+        maxDelta /= 2.0f;                                       // this is the max +/- range
 
-		//  find biggest range
+        for (int i = 0; i < 3; i++) {
+            delta = (m_settings->m_compassCalMax.data(i) - m_settings->m_compassCalMin.data(i)) / 2.0f;
+            m_compassCalScale[i] = maxDelta / delta;            // makes everything the same range
+            m_compassCalOffset[i] = (m_settings->m_compassCalMax.data(i) + m_settings->m_compassCalMin.data(i)) / 2.0f;
+        }
+    }
 
-		for (int i = 0; i < 3; i++) {
-			if ((calData.magMax[i] - calData.magMin[i]) > maxDelta)
-				maxDelta = calData.magMax[i] - calData.magMin[i];
-		}
-		if (maxDelta < 0) {
-			return;
-		}
-		maxDelta /= 2.0f;                                       // this is the max +/- range
+    if (m_settings->m_compassCalValid) {
+        ROS_INFO("Using min/max compass calibration");
+    } else {
+        ROS_INFO("min/max compass calibration not in use");
+    }
 
-		for (int i = 0; i < 3; i++) {
-			delta = (calData.magMax[i] - calData.magMin[i]) / 2.0f;
-			m_compassCalScale[i] = maxDelta / delta;            // makes everything the same range
-			m_compassCalOffset[i] = (calData.magMax[i] + calData.magMin[i]) / 2.0f;
-		}
-		m_calibrationValid = true;
-	}*/
+    /*if (m_settings->m_compassCalEllipsoidValid) {
+        ROS_INFO("Using ellipsoid compass calibration");
+    } else {
+        ROS_INFO("Ellipsoid compass calibration not in use");
+    }*/
+
+    if (m_settings->m_accelCalValid) {
+        ROS_INFO("Using accel calibration");
+    } else {
+        ROS_INFO("Accel calibration not in use");
+    }
 }

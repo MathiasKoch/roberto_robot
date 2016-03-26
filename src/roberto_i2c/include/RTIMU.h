@@ -53,7 +53,8 @@ public:
 
     //  This one wanted a similar name but isn't pure virtual
 
-    virtual bool IMUCompassCalValid() { return m_calibrationValid; }
+    virtual bool getCompassCalValid() = 0;
+    virtual bool getAccelCalValid() = 0;
 
     //  setCalibrationMode() turns off use of cal data so that raw data can be accumulated
     //  to derive calibration data
@@ -63,10 +64,6 @@ public:
     //  setCalibrationData configured the cal data and also enables use if valid
 
     void setCalibrationData();
-
-    //  getCalibrationValid() returns true if the calibration data is being used
-
-    bool getCalibrationValid() { return !m_calibrationMode && m_calibrationValid; }
 
     inline const RTVector3& getGyro() { return m_gyro; }			// gets gyro rates in radians/sec
     inline const RTVector3& getAccel() { return m_accel; }			// get accel data in gs

@@ -1,6 +1,10 @@
 
 #include "OLED.h"
 
+
+OLED::OLED(){
+
+}
   
 
 int OLED::fastI2Cwrite(unsigned char cmd, unsigned char* tbuf, uint32_t len) {
@@ -10,9 +14,18 @@ int OLED::fastI2Cwrite(unsigned char cmd, unsigned char* tbuf, uint32_t len) {
 }
 
 
-void OLED::init(RTIMUSettings *settings, uint8_t i2c_addr, uint8_t width, uint8_t height) {
+bool OLED::init(RTIMUSettings *settings, uint8_t i2c_addr, uint8_t width, uint8_t height) {
 	m_settings = settings;
 	_i2c_addr = i2c_addr;
+
+	available = true;
+	uint8_t b = SSD1306_Normal_Display;
+	
+	if(!m_settings->I2CWrite(_i2c_addr, SSD_Command_Mode, sizeof(b), &b, "")){
+		available = false;
+		return false;
+	}
+
 	// Lcd size
 	ssd1306_lcdwidth  = width;
 	ssd1306_lcdheight = height;
@@ -25,12 +38,16 @@ void OLED::init(RTIMUSettings *settings, uint8_t i2c_addr, uint8_t width, uint8_
 		
 	// Allocate memory for OLED buffer
 	poledbuff = (uint8_t *) malloc ( (ssd1306_lcdwidth * ssd1306_lcdheight / 8 )); 
+	return true;
 }
 
 
 
 void OLED::close(void){
 	// De-Allocate memory for OLED buffer if any
+	if(!available)
+		return;
+
 	if (poledbuff)
 		free(poledbuff);
 		
@@ -43,6 +60,9 @@ int OLED::begin(void){
 	uint8_t compins;
 	uint8_t contrast;
 	uint8_t precharge;
+
+	if(!available)
+		return false;
 
 	if (!m_settings->I2COpen())
         return false;
@@ -87,10 +107,13 @@ int OLED::begin(void){
 
 void OLED::invertDisplay(uint8_t i) 
 {
-  if (i) 
-    ssd1306_command(SSD_Inverse_Display);
-  else 
-    ssd1306_command(SSD1306_Normal_Display);
+	if(!available)
+		return;
+
+	if (i) 
+		ssd1306_command(SSD_Inverse_Display);
+	else 
+		ssd1306_command(SSD1306_Normal_Display);
 }
 
 void OLED::ssd1306_command(uint8_t c){ 
@@ -194,6 +217,9 @@ void OLED::ssd1306_data(uint8_t c){
 }
 
 void OLED::display(void) {
+	if(!available)
+		return;
+
 	ssd1306_command(SSD1306_SETLOWCOLUMN  | 0x0); // low col = 0
 	ssd1306_command(SSD1306_SETHIGHCOLUMN | 0x0); // hi col = 0
 	ssd1306_command(SSD1306_SETSTARTLINE  | 0x0); // line #0
@@ -216,11 +242,15 @@ void OLED::display(void) {
 }
 
 void OLED::setBuffer(uint8_t * buf) {
+	if(!available)
+		return;
 	memcpy(poledbuff, buf, (ssd1306_lcdwidth*ssd1306_lcdheight/8));
 }
 
 
 // clear everything (in the buffer)
 void OLED::clearDisplay(void) {
+	if(!available)
+		return;
 	memset(poledbuff, 0, (ssd1306_lcdwidth*ssd1306_lcdheight/8));
 }

@@ -249,7 +249,7 @@ int GPIOManager::getEdge(unsigned int gpio) {
 /**
  * Wait for edge event
  */
-int GPIOManager::waitForEdge(unsigned int gpio, EDGE_VALUE value) {
+int GPIOManager::waitForEdge(unsigned int gpio, EDGE_VALUE value, int timeout) {
   char path[50], buf;
   int efd, fd, result;
   struct epoll_event events, ev;
@@ -275,7 +275,7 @@ int GPIOManager::waitForEdge(unsigned int gpio, EDGE_VALUE value) {
 
   // Ignore the first read (initial value)
   for (int i = 0; i < 2; i++) {
-    result = epoll_wait(efd, &events, 1, 500);
+    result = epoll_wait(efd, &events, 1, timeout);
     if (result == -1) {
       return -1;
     }

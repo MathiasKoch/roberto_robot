@@ -125,6 +125,7 @@
 
 //  AK8963 compass registers
 
+#define AK8963_WHO_AM_I             0x00                    // 
 #define AK8963_DEVICEID             0x48                    // the device ID
 #define AK8963_ST1                  0x02                    // status 1
 #define AK8963_CNTL                 0x0a                    // control reg
@@ -140,7 +141,7 @@
 
 #define MPU9250_FIFO_CHUNK_SIZE     12                      // gyro and accels take 12 bytes
 
-#ifdef MPU9250_CACHE_MODE
+/*#ifdef MPU9250_CACHE_MODE
 
 //  Cache mode defines
 
@@ -156,7 +157,7 @@ typedef struct
 
 } MPU9250_CACHE_BLOCK;
 
-#endif
+#endif*/
 
 
 class RTIMUMPU9250 : public RTIMU
@@ -178,6 +179,8 @@ public:
     virtual bool IMURead();
     virtual int IMUGetPollInterval();
     virtual bool IMUGyroBiasValid() { return !m_gyroLearning; }
+    virtual bool getCompassCalValid();
+    virtual bool getAccelCalValid();
     
 
 protected:
@@ -223,14 +226,14 @@ private:
     bool IMUinitialized;
 
 
-#ifdef MPU9250_CACHE_MODE
+/*#ifdef MPU9250_CACHE_MODE
 
     MPU9250_CACHE_BLOCK m_cache[MPU9250_CACHE_BLOCK_COUNT]; // the cache itself
     int m_cacheIn;                                          // the in index
     int m_cacheOut;                                         // the out index
     int m_cacheCount;                                       // number of used cache blocks
 
-#endif
+#endif*/
 
 };
 

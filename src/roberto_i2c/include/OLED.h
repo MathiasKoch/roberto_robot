@@ -87,7 +87,8 @@ class RTIMUSettings;
 
 class OLED {
     public:
-        void init(RTIMUSettings *settings, uint8_t i2c_addr, uint8_t width, uint8_t height);
+        OLED();
+        bool init(RTIMUSettings *settings, uint8_t i2c_addr, uint8_t width, uint8_t height);
 
         int begin(void);
         void close(void);
@@ -118,6 +119,7 @@ class OLED {
     private:
         uint8_t *poledbuff;	// Pointer to OLED data buffer in memory
         int8_t _i2c_addr;
+        bool available;
         uint8_t ssd1306_lcdwidth, ssd1306_lcdheight;
 
         int fastI2Cwrite(unsigned char cmd, unsigned char* tbuf, uint32_t len);

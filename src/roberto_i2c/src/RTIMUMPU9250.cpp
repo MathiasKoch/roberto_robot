@@ -186,10 +186,6 @@ bool RTIMUMPU9250::IMUInit()
 
     m_firstTime = true;
 
-#ifdef MPU9250_CACHE_MODE
-    m_cacheIn = m_cacheOut = m_cacheCount = 0;
-#endif
-
     //  configure IMU
 
     m_slaveAddr = m_settings->m_I2CSlaveAddress;
@@ -223,7 +219,7 @@ bool RTIMUMPU9250::IMUInit()
         return false;
 
     if (result != MPU9250_ID) {
-        ROS_ERROR("Incorrect %s id 0x%x, expected 0x%x\n", IMUName(), result, MPU9250_ID);
+        ROS_ERROR("Incorrect %s id 0x%x, expected 0x%x", IMUName(), result, MPU9250_ID);
         return false;
     }
 
@@ -246,6 +242,8 @@ bool RTIMUMPU9250::IMUInit()
         return false;
 
     //  enable the sensors
+
+
 
     if (!m_settings->I2CWrite(m_slaveAddr, MPU9250_PWR_MGMT_1, 1, "Failed to set pwr_mgmt_1"))
         return false;
@@ -331,8 +329,21 @@ bool RTIMUMPU9250::setSampleRate()
 
 bool RTIMUMPU9250::compassSetup() {
     unsigned char asa[3];
+    unsigned char result;
 
-    bypassOn();
+    /*bypassOn();
+    //return true;
+
+    if (!m_settings->I2CRead(AK8963_ADDRESS, AK8963_WHO_AM_I, 1, &result, "Failed to read AK8963 id, Bypass may have failed!")){
+        bypassOff();
+        return false;
+    }
+
+    if (result != AK8963_DEVICEID) {
+        bypassOff();
+        ROS_ERROR("Incorrect %s id 0x%x, expected 0x%x", "AK8963 (Compass)", result, AK8963_DEVICEID);
+        return false;
+    }
 
     // get fuse ROM data
 
@@ -356,15 +367,15 @@ bool RTIMUMPU9250::compassSetup() {
         return false;
     }
 
-    bypassOff();
+    bypassOff();*/
 
     
 
     //  convert asa to usable scale factor
 
-    m_compassAdjust[0] = ((float)asa[0] - 128.0) / 256.0 + 1.0f;
-    m_compassAdjust[1] = ((float)asa[1] - 128.0) / 256.0 + 1.0f;
-    m_compassAdjust[2] = ((float)asa[2] - 128.0) / 256.0 + 1.0f;
+    m_compassAdjust[0] = 1;//((float)asa[0] - 128.0) / 256.0 + 1.0f;
+    m_compassAdjust[1] = 1;//((float)asa[1] - 128.0) / 256.0 + 1.0f;
+    m_compassAdjust[2] = 1;//((float)asa[2] - 128.0) / 256.0 + 1.0f;
 
     if (!m_settings->I2CWrite(m_slaveAddr, MPU9250_I2C_MST_CTRL, 0x40, "Failed to set I2C master mode"))
         return false;
@@ -407,6 +418,14 @@ bool RTIMUMPU9250::setCompassRate()
     if (!m_settings->I2CWrite(m_slaveAddr, MPU9250_I2C_SLV4_CTRL, rate, "Failed to set slave ctrl 4"))
          return false;
     return true;
+}
+
+bool RTIMUMPU9250::getCompassCalValid(){
+    return m_settings->m_compassCalValid;
+}
+
+bool RTIMUMPU9250::getAccelCalValid(){
+    return m_settings->m_accelCalValid;
 }
 
 
@@ -488,17 +507,13 @@ bool RTIMUMPU9250::IMURead()
         // more than 40 samples behind - going too slowly so discard some samples but maintain timestamp correctly
         while (count >= MPU9250_FIFO_CHUNK_SIZE * 10) {
             if (!m_settings->I2CRead(m_slaveAddr, MPU9250_FIFO_R_W, MPU9250_FIFO_CHUNK_SIZE, fifoData, "Failed to read fifo data"))
-                return false;
-
-            ROS_INFO("MPU-9250 stuck in while loop with count = %d", count);
-            
+                return false;            
             count -= MPU9250_FIFO_CHUNK_SIZE;
             m_timestamp += m_sampleInterval;
         }
     }
 
     if (count < MPU9250_FIFO_CHUNK_SIZE){
-        ROS_INFO("MPU-9250 fifo count less than MPU9250_FIFO_CHUNK_SIZE");
         return false;
     }
 
