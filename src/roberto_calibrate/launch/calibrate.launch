@@ -1,0 +1,14 @@
+<launch>
+	<node pkg="roberto_i2c" type="roberto_i2c" name="i2c_node" output="log">
+	    <rosparam file="$(find roberto_i2c)/param/imu.yaml"/>
+		<param name="gpio_expander_address" value="56"/>
+		<param name="interrupt_pin" value="204"/>
+		<param name="calibrateMode" value="true"/>
+
+		<param name="publish_magnetometer" value="true"/>
+	</node>
+	
+    <node pkg="roberto_calibrate" type="roberto_calibrate" name="calibration_node" output="screen">
+	    <param name="imuYaml" value="/param/imu.yaml"/>
+	</node>
+</launch>

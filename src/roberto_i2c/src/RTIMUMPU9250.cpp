@@ -331,8 +331,8 @@ bool RTIMUMPU9250::compassSetup() {
     unsigned char asa[3];
     unsigned char result;
 
+    // TODO: Make this compass sensitivity data work!
     /*bypassOn();
-    //return true;
 
     if (!m_settings->I2CRead(AK8963_ADDRESS, AK8963_WHO_AM_I, 1, &result, "Failed to read AK8963 id, Bypass may have failed!")){
         bypassOff();

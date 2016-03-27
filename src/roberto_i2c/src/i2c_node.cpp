@@ -35,6 +35,8 @@ RTIMUSettings settings;                               // the settings object
 OLED *displayR;
 OLED *displayL;
 
+boost::thread *t;
+
 int interrupt_pin;
 int GPIO_ADDR;
 
@@ -168,43 +170,48 @@ int main(int argc, char **argv){
 	int DISPLAYL_ADDR;
 	private_nh_.param("left_display_address", DISPLAYL_ADDR, 60);
 
+	bool calibrateMode;
+	private_nh_.param("calibrateMode", calibrateMode, false);
+
 	settings.loadSettings(&private_nh_);
 
 	// Initialize both OLED displays on I2C bus
-	displayR = new OLED();
-	if(displayR->init(&settings, DISPLAYR_ADDR, 128, 64)){
-		displayR->begin();
-		displayR->display();
-	}else{
-		ROS_WARN("Right OLED display not detected!");
-	}
+	if(!calibrateMode){
+		displayR = new OLED();
+		if(displayR->init(&settings, DISPLAYR_ADDR, 128, 64)){
+			displayR->begin();
+			displayR->display();
+		}else{
+			ROS_WARN("Right OLED display not detected!");
+		}
 
-	displayL = new OLED();
-	if(displayL->init(&settings, DISPLAYL_ADDR, 128, 64)){
-		displayL->begin();
-		displayL->display();
-	}else{
-		ROS_WARN("Left OLED display not detected!");
-	}
+		displayL = new OLED();
+		if(displayL->init(&settings, DISPLAYL_ADDR, 128, 64)){
+			displayL->begin();
+			displayL->display();
+		}else{
+			ROS_WARN("Left OLED display not detected!");
+		}
 
-	// Start interrupt thread
-	boost::thread t(&interruptThread);
+		// Start interrupt thread
+		t = new boost::thread(&interruptThread);
+	}
 
 
 	private_nh_.param<std::string>("frame_id", imu_frame_id_, "imu_link");
 
-	ros::Publisher imu_pub_ = n.advertise<sensor_msgs::Imu>("data",10);
+	ros::Publisher imu_pub_ = n.advertise<sensor_msgs::Imu>("imu/data",10);
 
 	bool magnetometer;
 	private_nh_.param("publish_magnetometer", magnetometer, false);
 	if (magnetometer){
-		magnetometer_pub_ = n.advertise<sensor_msgs::MagneticField>("mag", 10, false);
+		magnetometer_pub_ = n.advertise<sensor_msgs::MagneticField>("imu/mag", 10, false);
 	}
 
 	bool euler;
 	private_nh_.param("publish_euler", euler, false);
 	if (euler){
-		euler_pub_ = n.advertise<geometry_msgs::Vector3>("euler", 10, false);
+		euler_pub_ = n.advertise<geometry_msgs::Vector3>("imu/euler", 10, false);
 	}
 
 	std::vector<double> orientation_covariance, angular_velocity_covariance, linear_acceleration_covariance;
@@ -244,6 +251,8 @@ int main(int argc, char **argv){
     	ROS_ERROR("Failed to init IMU");
   	}
 
+  	imu->setCalibrationMode(calibrateMode);
+
 	// Tell ROS how fast to run this node.
 	//ros::Rate r(1000);
 	ros::Rate r(100);
@@ -273,9 +282,15 @@ int main(int argc, char **argv){
 			imu_msg.angular_velocity.y = gyro.y();
 			imu_msg.angular_velocity.z = gyro.z();
 
-			imu_msg.linear_acceleration.x = accel.x() * G_2_MPSS;
-			imu_msg.linear_acceleration.y = accel.y() * G_2_MPSS;
-			imu_msg.linear_acceleration.z = accel.z() * G_2_MPSS;
+			if(calibrateMode){
+				imu_msg.linear_acceleration.x = accel.x();
+				imu_msg.linear_acceleration.y = accel.y();
+				imu_msg.linear_acceleration.z = accel.z();
+			}else{
+				imu_msg.linear_acceleration.x = accel.x() * G_2_MPSS;
+				imu_msg.linear_acceleration.y = accel.y() * G_2_MPSS;
+				imu_msg.linear_acceleration.z = accel.z() * G_2_MPSS;
+			}
 			imu_pub_.publish(imu_msg);
 
 			if (magnetometer_pub_ != NULL && imu->getCompassCalValid())
@@ -285,9 +300,15 @@ int main(int argc, char **argv){
 				msg.header.frame_id=imu_frame_id_;
 				msg.header.stamp=ros::Time::now();
 
-				msg.magnetic_field.x = compass.x()/uT_2_T;
-				msg.magnetic_field.y = compass.y()/uT_2_T;
-				msg.magnetic_field.z = compass.z()/uT_2_T;
+				if(calibrateMode){
+					msg.magnetic_field.x = compass.x();
+					msg.magnetic_field.y = compass.y();
+					msg.magnetic_field.z = compass.z();
+				}else{
+					msg.magnetic_field.x = compass.x()/uT_2_T;
+					msg.magnetic_field.y = compass.y()/uT_2_T;
+					msg.magnetic_field.z = compass.z()/uT_2_T;
+				}
 
 				magnetometer_pub_.publish(msg);
 			}
@@ -304,25 +325,26 @@ int main(int argc, char **argv){
 			}
 		}
 
+		if(!calibrateMode){
+			if(pub_battery_stats.getNumSubscribers() > 0){
+				// Read and publish Battery stats
+			}
+			if(pub_battery_diag.getNumSubscribers() > 0){
+				// Read and publish Battery diagnostics
+			}
 
-		if(pub_battery_stats.getNumSubscribers() > 0){
-			// Read and publish Battery stats
-		}
-		if(pub_battery_diag.getNumSubscribers() > 0){
-			// Read and publish Battery diagnostics
-		}
+			if(newButtons){
+				// publish Button state
+				std_msgs::String test;
+				test.data = "here";
+				pub_buttons.publish(test);
+	  			newButtons = 0;
+			}
 
-		if(newButtons){
-			// publish Button state
-			std_msgs::String test;
-			test.data = "here";
-			pub_buttons.publish(test);
-  			newButtons = 0;
-		}
-
-		if(shutdown){
-			g_request_shutdown = 1;
-			break;
+			if(shutdown){
+				g_request_shutdown = 1;
+				break;
+			}
 		}
 		ros::spinOnce();
 		r.sleep();
@@ -330,11 +352,13 @@ int main(int argc, char **argv){
 	}
 
 	// Clean up
-	displayR->close();
-	displayL->close();
+	if(!calibrateMode){
+		displayR->close();
+		displayL->close();
 
-	t.interrupt();
-	t.join();
+		t->interrupt();
+		t->join();
+	}
 	settings.I2CClose();
 	
 	// Sleep for half a second to allow threads to join in
