@@ -1,6 +1,8 @@
 #include <boost/thread.hpp>
 #include <signal.h>
 #include <ros/xmlrpc_manager.h>
+#include <vector>
+#include <iostream>
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "std_msgs/UInt8MultiArray.h"
@@ -66,6 +68,16 @@ void shutdownCallback(XmlRpc::XmlRpcValue& params, XmlRpc::XmlRpcValue& result)
 
 
 void interruptThread(){
+
+	// Find inital values of all GPIOs, to cope with active high/low devices
+	uint8_t initial, initial2;
+	settings.I2CRead(GPIO_ADDR, 1, &initial, "Failed to read GPIO Expander");
+	boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+	settings.I2CRead(GPIO_ADDR, 1, &initial2, "Failed to read GPIO Expander");
+	if(initial != initial2)
+		settings.I2CRead(GPIO_ADDR, 1, &initial, "Failed to read GPIO Expander");
+	
+	// Setup interrupt pin
 	GPIO::GPIOManager* gp = GPIO::GPIOManager::getInstance();
 	gp->exportPin(interrupt_pin);
 	boost::this_thread::sleep(boost::posix_time::milliseconds(500));
@@ -75,17 +87,14 @@ void interruptThread(){
 	boost::this_thread::sleep(boost::posix_time::milliseconds(500));
 
 	uint8_t byte;
-	settings.I2CRead(GPIO_ADDR, 1, &byte, "Failed to read GPIO Expander");
-	boost::this_thread::sleep(boost::posix_time::milliseconds(500));
-
-	uint8_t initial;
-	settings.I2CRead(GPIO_ADDR, 1, &initial, "Failed to read GPIO Expander");
     while(true){
         try{
   			if(gp->waitForEdge(interrupt_pin, GPIO::FALLING, 500) > 0 && !shutdown){		// Blocking!
+  				// Interrupt cant fire again until GPIO expander has been read
 	  			settings.I2CRead(GPIO_ADDR, 1, &byte, "Failed to read GPIO Expander");
-	  			if(byte != initial){	// Only if any pins are different from initial state
 
+	  			// Only react if any pins are different from initial state
+	  			if(byte != initial){
 		  			if((byte & SHUTDOWN_PIN) != (initial & SHUTDOWN_PIN)){
 		  				ROS_INFO("Shutdown was clicked!");
 		  				shutdown = 1;
@@ -113,7 +122,6 @@ void interruptThread(){
 		  		}
 		  	}
             boost::this_thread::interruption_point();
-		  	//settings.I2CRead(GPIO_ADDR, 1, &byte, "");	// Read to avoid missing interupt
         }catch(boost::thread_interrupted&){
         	gp->clean();
 			ROS_INFO("Cleaning GPIO & closing I2C!");
@@ -122,15 +130,26 @@ void interruptThread(){
         }
     }
 }
-
-void displayRCallback(const std_msgs::UInt8MultiArray::ConstPtr& msg){
-	displayR->setBuffer((uint8_t*)&msg->data);
+void displayRCallback(const std_msgs::UInt8MultiArray::ConstPtr& array){
+	uint8_t Arr[1024];
+	int i = 0;
+	for(std::vector<uint8_t>::const_iterator it = array->data.begin(); it != array->data.end(); ++it){
+		Arr[i++] = *it;
+	}
+	displayR->setBuffer(Arr);
 	displayR->display();
+	return;
 }
 
-void displayLCallback(const std_msgs::UInt8MultiArray::ConstPtr& msg){
-	displayL->setBuffer((uint8_t*)&msg->data);
+void displayLCallback(const std_msgs::UInt8MultiArray::ConstPtr& array){
+	uint8_t Arr[1024];
+	int i = 0;
+	for(std::vector<uint8_t>::const_iterator it = array->data.begin(); it != array->data.end(); ++it){
+		Arr[i++] = *it;
+	}
+	displayL->setBuffer(Arr);
 	displayL->display();
+	return;
 }
 
 int main(int argc, char **argv){
@@ -203,7 +222,7 @@ int main(int argc, char **argv){
 	ros::Publisher imu_pub_ = n.advertise<sensor_msgs::Imu>("imu/data",10);
 
 	bool magnetometer;
-	private_nh_.param("publish_magnetometer", magnetometer, false);
+	private_nh_.param("publish_magnetometer", magnetometer, true);
 	if (magnetometer){
 		magnetometer_pub_ = n.advertise<sensor_msgs::MagneticField>("imu/mag", 10, false);
 	}
@@ -238,8 +257,8 @@ int main(int argc, char **argv){
 
   	
 	// Setup ROS topics - publishers and subscribers
-	ros::Subscriber sub_oledR = n.subscribe("displayR", 100, displayRCallback);
-	ros::Subscriber sub_oledL = n.subscribe("displayL", 100, displayLCallback);
+	ros::Subscriber sub_oledR = n.subscribe("displayR", 10, displayRCallback);
+	ros::Subscriber sub_oledL = n.subscribe("displayL", 10, displayLCallback);
 
 	ros::Publisher pub_battery_stats = n.advertise<std_msgs::String>("battery_stats", 10);
 	ros::Publisher pub_battery_diag = n.advertise<std_msgs::String>("battery_diag", 10);
@@ -253,9 +272,10 @@ int main(int argc, char **argv){
 
   	imu->setCalibrationMode(calibrateMode);
 
+
 	// Tell ROS how fast to run this node.
-	//ros::Rate r(1000);
-	ros::Rate r(100);
+  	// Run the main loop at twice the IMU rate
+	ros::Rate r((int)ceil(2.0/(imu->IMUGetPollInterval()/1000.0)));
 	while (!g_request_shutdown){
 		// Read and publish IMU data
 		if (imu->IMURead()) {                                // get the latest data if ready yet
@@ -270,26 +290,28 @@ int main(int argc, char **argv){
     		RTQuaternion fusionQPose = fusion.getFusionQPose();
     		ros::Time current_time = ros::Time::now();
 
+    		// Units and Axis sorted to comply with REP-103
+    		// The header frame ID should comply with REP-105
 
 			imu_msg.header.stamp = current_time;
 			imu_msg.header.frame_id = imu_frame_id_;
-			imu_msg.orientation.x = fusionQPose.x();
-			imu_msg.orientation.y = fusionQPose.y();
-			imu_msg.orientation.z = fusionQPose.z();
+			imu_msg.orientation.x = -fusionQPose.y();
+			imu_msg.orientation.y = -fusionQPose.x();
+			imu_msg.orientation.z = -fusionQPose.z();
 			imu_msg.orientation.w = fusionQPose.scalar();
 
-			imu_msg.angular_velocity.x = gyro.x();
-			imu_msg.angular_velocity.y = gyro.y();
-			imu_msg.angular_velocity.z = gyro.z();
+			imu_msg.angular_velocity.x = -gyro.y();
+			imu_msg.angular_velocity.y = -gyro.x();
+			imu_msg.angular_velocity.z = -gyro.z();
 
 			if(calibrateMode){
-				imu_msg.linear_acceleration.x = accel.x();
-				imu_msg.linear_acceleration.y = accel.y();
-				imu_msg.linear_acceleration.z = accel.z();
+				imu_msg.linear_acceleration.x = -accel.y();
+				imu_msg.linear_acceleration.y = -accel.x();
+				imu_msg.linear_acceleration.z = -accel.z();
 			}else{
-				imu_msg.linear_acceleration.x = accel.x() * G_2_MPSS;
-				imu_msg.linear_acceleration.y = accel.y() * G_2_MPSS;
-				imu_msg.linear_acceleration.z = accel.z() * G_2_MPSS;
+				imu_msg.linear_acceleration.x = -accel.y() * G_2_MPSS;
+				imu_msg.linear_acceleration.y = -accel.x() * G_2_MPSS;
+				imu_msg.linear_acceleration.z = -accel.z() * G_2_MPSS;
 			}
 			imu_pub_.publish(imu_msg);
 

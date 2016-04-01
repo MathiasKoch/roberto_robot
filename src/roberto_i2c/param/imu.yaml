@@ -1,23 +1,23 @@
-magnetic_declination: 0.0
-publish_magnetometer: true
-publish_euler: false
-imu_frame: imu_link
 mpu9250:
   gyro_full_scale_range: 16
+  compass_sample_rate: 25
+  accel_low_pass_filter: 4
+  gyro_low_pass_filter: 3
   gyro_accel_sample_rate: 50
   accel_full_scale_range: 16
-  gyro_low_pass_filter: 3
-  accel_low_pass_filter: 4
-  compass_sample_rate: 25
+imu_frame: imu_link
+calib:
+  accel_valid: true
+  accel_max: [1.023615, 0.9887788, 1.08033]
+  compass_valid: true
+  compass_ellipsoid_valid: false
+  compass_min: [-78.59953, -47.57291, -54.35297]
+  compass_max: [-40.19823, -0.7945198, -21.20838]
+  accel_min: [-0.9816958, -1.015558, -0.925463]
+i2c_bus: 4
+calibrateMode: false
 imu_type: 1
 imu_slave_address: 105
-calibrateMode: false
-i2c_bus: 4
-calib:
-  accel_max: [0.995606, 1.002416, 0.996524]
-  compass_max: [-3.531159e-05, -1.106005e-06, -1.924803e-05]
-  accel_min: [-1.004789, -1.014467, -1.015889]
-  compass_min: [-7.433432e-05, -3.630154e-05, -4.142311e-05]
-  compass_valid: false
-  accel_valid: false
-  compass_ellipsoid_valid: false
+publish_magnetometer: true
+publish_euler: false
+magnetic_declination: 0.0
