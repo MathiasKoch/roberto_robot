@@ -106,7 +106,10 @@ void RobertoTeleop::publish()
   }
   else if(!deadman_pressed_ && !zero_cmd_published_)
   {
-    vel_pub_.publish(*new roberto_msgs::MotorState());
+    roberto_msgs::MotorState vel;
+    vel.speed = 0;
+    vel.heading_angle = 0;
+    vel_pub_.publish(vel);
     zero_cmd_published_=true;
   }
 }

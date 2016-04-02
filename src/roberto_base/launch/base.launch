@@ -11,7 +11,28 @@
 		<param name="wheelRadius" value="0.04"/>
 
 
+		<!-- Encoder I2C read timeout im ms -->
+		<param name="encoderTimeout" value="10"/>
+
 		<param name="wheelSeperation" value="0.3"/>
 	</node>
+
+	<node pkg="roberto_i2c" type="roberto_i2c" name="i2c_node" output="screen" >
+	    <rosparam file="$(find roberto_i2c)/param/imu.yaml"/>
+		<param name="gpio_expander_address" value="56"/>
+		<param name="interrupt_pin" value="204"/>
+	</node>
+
+	<node pkg="roberto_teleop" type="roberto_teleop_joy" name="roberto_teleop_joystick">
+    	<param name="scale_angular" value="1.0"/>
+   		<param name="scale_linear" value="1.0"/>
+    	<remap from="roberto_teleop_joystick/cmd_vel" to="raw_joy_vel"/>
+  	</node>
+
+  	<node name="throttler" type="throttle" pkg="topic_tools" args="messages /raw_joy_vel 30 /throttled_joy_vel" >
+  		<param name="lazy" value="true" />
+  	</node>
+
+  	<node pkg="joy" type="joy_node" name="joystick"/>
 
 </launch>
