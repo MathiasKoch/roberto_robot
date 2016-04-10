@@ -28,7 +28,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 
 	if (mat.rows > 60 && mat.cols > 60){
-		cv::circle(mat, cv::Point(50, 50), 10, CV_RGB(255,0,0));
+		cv::circle(mat, cv::Point(50, 50), 20, CV_RGB(255,255,0));
 	}
 
 	pub.publish(cv_ptr->toImageMsg());
