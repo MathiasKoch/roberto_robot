@@ -10,7 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
 )
 
-find_package(OpenCV 2 REQUIRED)
+find_package(OpenCV 3 REQUIRED)
 
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
