@@ -6,6 +6,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "std_msgs/UInt8MultiArray.h"
+#include "std_msgs/UInt16.h"
 //#include <tf/transform_broadcaster.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/MagneticField.h>
@@ -30,8 +31,10 @@
 
 sig_atomic_t volatile newButtons = 0;
 
+#ifdef IMU
 RTIMU *imu;                                           // the IMU object
 RTFusionRTQF fusion;                                  // the fusion object
+#endif
 RTIMUSettings settings;                               // the settings object
 
 OLED *displayR;
@@ -163,19 +166,8 @@ int main(int argc, char **argv){
   	ros::XMLRPCManager::instance()->bind("shutdown", shutdownCallback);
 
 
-	sensor_msgs::Imu imu_msg;
 
-	//tf::TransformBroadcaster tf_broadcaster_;
-
-	ros::Publisher magnetometer_pub_;
-	ros::Publisher euler_pub_;
-
-	std::string imu_frame_id_;
-
-	double declination_radians_;
-
-
-	int parm;
+  	int parm;
 	private_nh_.param("i2c_bus", parm, 4);
 	settings.m_I2CBus = parm;	// /dev/i2c-4
 	
@@ -193,6 +185,7 @@ int main(int argc, char **argv){
 	private_nh_.param("calibrateMode", calibrateMode, false);
 
 	settings.loadSettings(&private_nh_);
+
 
 	// Initialize both OLED displays on I2C bus
 	if(!calibrateMode){
@@ -215,6 +208,19 @@ int main(int argc, char **argv){
 		// Start interrupt thread
 		t = new boost::thread(&interruptThread);
 	}
+
+
+ #ifdef IMU
+	sensor_msgs::Imu imu_msg;
+
+	//tf::TransformBroadcaster tf_broadcaster_;
+
+	ros::Publisher magnetometer_pub_;
+	ros::Publisher euler_pub_;
+
+	std::string imu_frame_id_;
+
+	double declination_radians_;
 
 
 	private_nh_.param<std::string>("frame_id", imu_frame_id_, "imu_link");
@@ -255,15 +261,6 @@ int main(int argc, char **argv){
 
 	private_nh_.param("magnetic_declination", declination_radians_, 0.0);
 
-  	
-	// Setup ROS topics - publishers and subscribers
-	ros::Subscriber sub_oledR = n.subscribe("displayR", 10, displayRCallback);
-	ros::Subscriber sub_oledL = n.subscribe("displayL", 10, displayLCallback);
-
-	ros::Publisher pub_battery_stats = n.advertise<std_msgs::String>("battery_stats", 10);
-	ros::Publisher pub_battery_diag = n.advertise<std_msgs::String>("battery_diag", 10);
-	ros::Publisher pub_buttons = n.advertise<std_msgs::String>("buttons", 10);
-
 	imu = RTIMU::createIMU(&settings);                        // create the imu object
 
 	if (!imu->IMUInit()) {
@@ -271,13 +268,28 @@ int main(int argc, char **argv){
   	}
 
   	imu->setCalibrationMode(calibrateMode);
+#endif
+
+	// Setup ROS topics - publishers and subscribers
+	ros::Subscriber sub_oledR = n.subscribe("displayR", 10, displayRCallback);
+	ros::Subscriber sub_oledL = n.subscribe("displayL", 10, displayLCallback);
+
+	ros::Publisher pub_battery_stats = n.advertise<std_msgs::UInt16>("battery_stats", 1);
+	ros::Publisher pub_battery_diag = n.advertise<std_msgs::String>("battery_diag", 10);
+	ros::Publisher pub_buttons = n.advertise<std_msgs::String>("buttons", 10);
+
 
 
 	// Tell ROS how fast to run this node.
   	// Run the main loop at twice the IMU rate
+#ifdef IMU
 	ros::Rate r((int)ceil(2.0/(imu->IMUGetPollInterval()/1000.0)));
+#else
+	ros::Rate r(100);
+#endif
 	while (!g_request_shutdown){
 		// Read and publish IMU data
+#ifdef IMU		
 		if (imu->IMURead()) {                                // get the latest data if ready yet
 
 			RTVector3 gyro = imu->getGyro();
@@ -346,10 +358,16 @@ int main(int argc, char **argv){
 				euler_pub_.publish(msg);
 			}
 		}
+#endif
 
 		if(!calibrateMode){
 			if(pub_battery_stats.getNumSubscribers() > 0){
 				// Read and publish Battery stats
+				uint8_t voltage[2];
+				settings.I2CRead(0x0b, 0x09, 2, voltage, "Failed to read battery voltage");
+				std_msgs::UInt16 v;
+				v.data = voltage[1] << 8 | voltage[0];
+				pub_battery_stats.publish(v);
 			}
 			if(pub_battery_diag.getNumSubscribers() > 0){
 				// Read and publish Battery diagnostics
@@ -390,9 +408,9 @@ int main(int argc, char **argv){
 
 	ros::shutdown();
 
-	/*if(shutdown){
-		system("shutdown -P now");
-	}*/
+	if(shutdown){
+		system("shutdown");
+	}
 
 	return 0;
 }

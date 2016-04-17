@@ -1,9 +1,9 @@
 mpu9250:
   gyro_full_scale_range: 16
-  compass_sample_rate: 25
+  compass_sample_rate: 10
   accel_low_pass_filter: 4
   gyro_low_pass_filter: 3
-  gyro_accel_sample_rate: 50
+  gyro_accel_sample_rate: 25
   accel_full_scale_range: 16
 imu_frame: imu_link
 calib:

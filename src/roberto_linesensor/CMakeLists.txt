@@ -135,7 +135,7 @@ include_directories(
 ## Declare a C++ executable
 add_executable(roberto_linesensor src/main.cpp)
 add_executable(roberto_snake_sensor src/snake_follower.cpp)
-
+add_executable(roberto_morph_sensor src/morph.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(roberto_linesensor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -147,6 +147,11 @@ target_link_libraries(roberto_linesensor
 )
 
 target_link_libraries(roberto_snake_sensor
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBRARIES}
+)
+
+target_link_libraries(roberto_morph_sensor
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
 )

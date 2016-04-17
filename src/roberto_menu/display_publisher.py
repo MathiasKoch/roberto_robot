@@ -53,11 +53,15 @@
 from PIL import Image, ImageDraw, ImageFont
 import rospy
 from std_msgs.msg import UInt8MultiArray
+from std_msgs.msg import UInt16
 from std_msgs.msg import MultiArrayDimension
 
 import socket
 import fcntl
 import struct
+
+import rospkg
+
 
 class canvas(object):
     """
@@ -110,14 +114,27 @@ def get_ip_address(ifname):
     )[20:24])
 
 
+def callback(data):
+    rospack = rospkg.RosPack()
+    font2 = ImageFont.truetype(rospack.get_path('roberto_menu') + "/fonts/C&C Red Alert [INET].ttf", 12)
+    global pubL
+    with canvas(pubL) as draw:
+            draw.text((10, 10), "Voltage: " + str(data.data) + " mV", font=font2, fill=1)
+
+pubL = None
 
 def talker():
-    font = ImageFont.load_default()
-    font2 = ImageFont.truetype('fonts/C&C Red Alert [INET].ttf', 12)
-    pubR = rospy.Publisher('displayR', UInt8MultiArray, queue_size=10)
-    pubL = rospy.Publisher('displayL', UInt8MultiArray, queue_size=10)
     rospy.init_node('talker', anonymous=True)
-    rate = rospy.Rate(1) # 1hz
+    rospack = rospkg.RosPack()
+
+    font = ImageFont.load_default()
+    font2 = ImageFont.truetype(rospack.get_path('roberto_menu') + "/fonts/C&C Red Alert [INET].ttf", 12)
+    pubR = rospy.Publisher('displayR', UInt8MultiArray, queue_size=10)
+    
+    global pubL
+    pubL = rospy.Publisher('displayL', UInt8MultiArray, queue_size=10)
+    rospy.Subscriber("battery_stats", UInt16, callback)
+    rate = rospy.Rate(0.2) # 1hz
     while not rospy.is_shutdown():
         #with canvas(pubL) as draw:
         #    logo = Image.open('images/pi_logo.png')
