@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>roberto_menu</name>
+  <name>roberto_statemachine</name>
   <version>0.0.0</version>
-  <description>The roberto_menu package</description>
+  <description>The roberto_statemachine package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->

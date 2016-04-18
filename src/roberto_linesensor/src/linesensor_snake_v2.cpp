@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Int32.h"
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <stdio.h>
@@ -20,9 +21,11 @@ int height, width;
 
 cv::Mat sampled(rSteps, thetaSteps, CV_8UC3);
 
-bool black = false;
+bool black = true;
 int threshType = black ? (cv::THRESH_BINARY_INV | cv::THRESH_OTSU) : (cv::THRESH_BINARY | cv::THRESH_OTSU);   
 
+image_transport::Publisher pub;
+ros::Publisher angle_pub;
 
 // Prototypes
 void sample(cv::Mat image);
@@ -170,7 +173,11 @@ void sample(cv::Mat image){
     if(lines.size() > 0){
         auto center = cv::Point((lines[lineselect].x + lines[lineselect].y)/2, (int)(height));
         cv::line( image, cv::Point(lines[lineselect].x, (int)(height)), cv::Point(lines[lineselect].y, (int)(height)), CV_RGB( 255, 0, 0 ), 1);
+        std_msgs::Int32 angle;
+        angle.data = (center.x - width/2) * 0.1;
+        angle_pub.publish(angle);
     }
+
 
 
     //cv::line( image, cv::Point(lines[lineselect].x, height), cv::Point(lines[lineselect].y, height), CV_RGB( 255, 0, 0 ), 1);
@@ -194,6 +201,7 @@ int main(int argc, char **argv)
 
     image_transport::ImageTransport it(nh);
     pub = it.advertise("usb_cam/image_filtered", 1);
+    angle_pub = nh.advertise<std_msgs::Int32>("line/angle",1);
     //pubS = it.advertise("usb_cam/sampled", 1);
     image_transport::Subscriber sub = it.subscribe("usb_cam/image_raw", 1, imageCallback);
     //first_scanpoint = Point(FRAME_WIDTH/2, scan_height_reg);
