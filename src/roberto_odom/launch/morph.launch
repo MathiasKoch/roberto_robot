@@ -8,7 +8,7 @@
     <param name="io_method" value="mmap"/>
     <param name="framerate" value="60"/>
   </node>
-  <node name="roberto_snake_sensorv2" pkg="roberto_linesensor" type="roberto_snake_sensorv2" respawn="false" output="screen">
+  <node name="roberto_morph_sensor" pkg="roberto_linesensor" type="roberto_morph_sensor" respawn="false" output="screen">
     <remap from="image" to="/usb_cam/image_raw"/>
     <param name="autosize" value="true" />
   </node>

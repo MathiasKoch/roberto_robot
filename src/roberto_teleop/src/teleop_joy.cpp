@@ -107,11 +107,11 @@ void RobertoTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
   double scale = l_scale_;
   roberto_msgs::MotorState vel;
   if(joy->buttons[0]){
-    scale = scale*0.35;
+    scale = scale*0.5;
     vel.heading_angle = 0;
     vel.mode = vel.DRIVE_MODE_SPIN;
   }else if(joy->buttons[1]){
-    scale = scale*0.5;
+    scale = scale*0.8;
     vel.heading_angle = 0;
     vel.mode = vel.DRIVE_MODE_SIDEWAYS;
   }else{

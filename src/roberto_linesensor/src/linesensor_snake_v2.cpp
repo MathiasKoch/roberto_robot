@@ -16,73 +16,87 @@ int thetaSteps = 360;
 int rSteps = 1;
 int rStepSize = 0;
 int radius = 70;
+int height, width;
 
 cv::Mat sampled(rSteps, thetaSteps, CV_8UC3);
 
 bool black = false;
 int threshType = black ? (cv::THRESH_BINARY_INV | cv::THRESH_OTSU) : (cv::THRESH_BINARY | cv::THRESH_OTSU);   
-cv::Mat kernel(5, 5, CV_8UC1, 1);
+
+
+// Prototypes
+void sample(cv::Mat image);
+void followLine(cv::Mat image, cv::Point center, cv::Point lastPoint, int depthLeft);
+void sampleLine(cv::Mat image);
+void sampleCircle(cv::Mat image, cv::Point center);
+vector<cv::Point> findLine(cv::Mat sampled, bool wrap);
+void imageCallback(const sensor_msgs::ImageConstPtr& msg);
 
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg){
-
     cv_bridge::CvImagePtr cv_ptr;
     cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
-
-
-    image = cv_ptr->image;
-
+    cv::Mat image = cv_ptr->image;
+    height = image.rows * 0.9;
+    width = image.cols;
     sample(image);
-
-
     pub.publish(cv_ptr->toImageMsg());
+
+    
+    /*cv_bridge::CvImagePtr cv_ptrS;
+    cv_ptrS->image = sampled;
+    pubS.publish(cv_ptrS->toImageMsg());*/
 }
 
 
 vector<cv::Point> findLine(cv::Mat sampled, bool wrap){    
+vector<cv::Point> lines;
+    cv::Scalar     mean;
+    cv::Scalar     stddev;
+    cv::GaussianBlur(sampled, sampled, cv::Size(21,1), 0,0);
+    cv::meanStdDev (sampled, mean, stddev );
+    
+    // do not search for lines if the standard dev is small (same intensity across the image)
+    if(stddev.val[0] > 10){
+        //cv::adaptiveThreshold(sampled, sampled, 255,CV_ADAPTIVE_THRESH_MEAN_C,CV_THRESH_BINARY_INV,101, 5);
+        cv::threshold(sampled, sampled, 0, 255, threshType);
+        cv::erode(sampled, sampled, cv::getStructuringElement(cv::MORPH_RECT,cv::Size(10,1)));
+        //cv::morphologyEx(sampled, sampled,2,kernel);
+        
+        int segmentStart = 0;
 
-    cv::threshold(sampled, sampled, 0, 255, threshType);
-    cv::morphologyEx(sampled, sampled,2,kernel);
+        uint8_t old = 0;// sampled.at<uint8_t>(0,thetaSteps-1);
+        uint8_t value = 0;
+        for(int i = 0 ; i< sampled.cols ; i++){
 
-    vector<cv::Point> lines; 
-
-    int segmentStart = 0;
-
-    uint8_t old = 255;// sampled.at<uint8_t>(0,thetaSteps-1);
-    uint8_t value = 0;
-    for(int i = 0 ; i< sampled.cols ; i++){
-
-        uint8_t value = sampled.at<uint8_t>(0,i);
-        if (value != old){
-            //new segment
-            if(value == 255){
-                int segmentEnd = i-1;
-                //Wrap around
-                if (segmentEnd < segmentStart){
-                    segmentEnd += sampled.cols;
+            uint8_t value = sampled.at<uint8_t>(0,i);
+            if (value != old){
+                //new segment
+                if(value == 0){
+                    int segmentEnd = i-1;
+                    lines.push_back(cv::Point(segmentStart , segmentEnd));
+                }else{
+                    segmentStart = i;
                 }
-
-                lines.push_back(cv::Point(segmentStart , segmentEnd));
-                
-                //sampled.at<uint8_t>(0,(int)(segmentCenterAngle)) = 128;
-
-            }else{
-                segmentStart = i;
             }
+            old = value;
         }
-        old = value;
+        // Fencepost
+        if (old == 255){
+            if (wrap && lines.size() > 0 && lines[0].x == 255){
+                lines[0] = cv::Point(segmentStart, lines[0].y + sampled.cols);
+                //cout << "Wrapping Line" << endl;
+            }else{
+                lines.push_back(cv::Point(segmentStart , sampled.cols));
+            }
+            
+        }
     }
-    if (wrap && lines.size() > 0 && value == 0 && lines[0].x == 0){
-        lines[0] = cv::Point(segmentStart, lines[0].y + sampled.cols);
-        //cout << "Wrapping Line" << endl;
-    }
-
+    
     return lines;
 }
 
 void sampleCircle(cv::Mat image, cv::Point center){  
-    //int oldPx = -1;
-    //int oldPy = -1;
     sampled = cv::Mat(rSteps, thetaSteps, CV_8UC3);
     float thetaStepsize = 2*M_PI/thetaSteps;
     
@@ -95,28 +109,15 @@ void sampleCircle(cv::Mat image, cv::Point center){
             int pY = center.y + (r)*sin(t);
             
             sampled.at<cv::Vec3b>(i,j) = image.at<cv::Vec3b>(pY,pX);
-            //image.at<cv::Vec3b>(pY,pX) = 0;
-
-            /*if (!(pX==oldPx && pY == oldPy)){                
-            }else{
-                cout << "Pixel sampled twice" << endl;
-            }
-            oldPx = pX;
-            oldPy = pY;
-            */
         }
     }
     
     cv::cvtColor(sampled, sampled, CV_BGR2GRAY);
-
-
-
-    cv::circle(image, center, radius+rSteps*rStepSize, CV_RGB(255,255,0));
-    
+    cv::circle(image, center, radius+rSteps*rStepSize, CV_RGB(255,255,0));    
 }
 
 void sampleLine(cv::Mat image){
-    cv::Rect lineROI(0,400,image.cols,1);
+    cv::Rect lineROI(0, height,image.cols,1);
     sampled = image(lineROI);
     cv::cvtColor(sampled, sampled, CV_BGR2GRAY);
 }
@@ -124,9 +125,9 @@ void sampleLine(cv::Mat image){
 void followLine(cv::Mat image, cv::Point center, cv::Point lastPoint, int depthLeft){
 
     sampleCircle(image, center);
-    
     auto lines = findLine(sampled, true);
-    //cout << "size: " << lines.size() << endl; 
+    //cout << "size: " << lines.size() << endl;
+
     for(cv::Point line : lines){
         float segmentCenterAngle = ((line.x+line.y)/2)*(2*M_PI)/thetaSteps; // Scaling for thetaSteps?
         //int segmentSize = segmentEnd-segmentStart;
@@ -138,7 +139,7 @@ void followLine(cv::Mat image, cv::Point center, cv::Point lastPoint, int depthL
         float dist = (x-lastPoint.x)*(x-lastPoint.x) + (y-lastPoint.y)*(y-lastPoint.y);
         //cout << "y: " << y << endl;
         //cout << "dist: " << dist << endl;
-        if(depthLeft > 0 && y < 400 && dist > r*r*0.5){
+        if(depthLeft > 0 && y < height && dist > r*r*0.5){
             followLine(image, cv::Point(x,y), center, depthLeft-1);
         }
     }
@@ -150,16 +151,31 @@ void sample(cv::Mat image){
     sampleLine(image);
     auto lines = findLine(sampled, false);
     for(cv::Point line : lines){
-        cv::line( image, cv::Point(line.x, 400), cv::Point(line.y, 400), CV_RGB( 255, 0, 0 ), 1);
+        cv::line( image, cv::Point(line.x, height), cv::Point(line.y, height), CV_RGB( 255, 0, 0 ), 1);
     }
     //cout << "" << lines << endl;
 
     //Select Line
     int lineselect = 0;
+    int largestLine = 0;
+    int cnt = 0;
+    for(cv::Point line : lines){
+        cv::line( image, cv::Point(line.x, (int)(height)), cv::Point(line.y, (int)(height)), CV_RGB( 255, 0, 0 ), 1);
+        if(lines[cnt].y - lines[cnt].x > largestLine){
+            largestLine = lines[cnt].y - lines[cnt].x;
+            lineselect = cnt;
+        }
+        cnt++;
+    }
+    if(lines.size() > 0){
+        auto center = cv::Point((lines[lineselect].x + lines[lineselect].y)/2, (int)(height));
+        cv::line( image, cv::Point(lines[lineselect].x, (int)(height)), cv::Point(lines[lineselect].y, (int)(height)), CV_RGB( 255, 0, 0 ), 1);
+    }
 
-    //cv::line( image, cv::Point(lines[lineselect].x, 400), cv::Point(lines[lineselect].y, 400), CV_RGB( 255, 0, 0 ), 1);
-    auto center = cv::Point((lines[lineselect].x + lines[lineselect].y)/2, 400);
-    followLine(image, center, center, 2);
+
+    //cv::line( image, cv::Point(lines[lineselect].x, height), cv::Point(lines[lineselect].y, height), CV_RGB( 255, 0, 0 ), 1);
+    //auto center = cv::Point((lines[lineselect].x + lines[lineselect].y)/2, height);
+    //followLine(image, center, center, 2);
 
     high_resolution_clock::time_point t2 = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>( t2 - t1 ).count();
@@ -178,6 +194,7 @@ int main(int argc, char **argv)
 
     image_transport::ImageTransport it(nh);
     pub = it.advertise("usb_cam/image_filtered", 1);
+    //pubS = it.advertise("usb_cam/sampled", 1);
     image_transport::Subscriber sub = it.subscribe("usb_cam/image_raw", 1, imageCallback);
     //first_scanpoint = Point(FRAME_WIDTH/2, scan_height_reg);
     //debug_mode=1;

@@ -1,18 +1,15 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(roberto_linesensor)
+project(roberto_odom)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  cv_bridge
-  image_transport
   roscpp
+  tf
+  nav_msgs
 )
 
-find_package(OpenCV 3 REQUIRED)
-
-set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -119,7 +116,6 @@ catkin_package(
 # include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
-  ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -133,34 +129,16 @@ include_directories(
 # add_dependencies(roberto_linesensor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(roberto_linesensor src/main.cpp)
-add_executable(roberto_snake_sensor src/snake_follower.cpp)
-add_executable(roberto_morph_sensor src/morph.cpp)
-add_executable(roberto_snake_sensorv2 src/linesensor_snake_v2.cpp)
+add_executable(roberto_odom src/main.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(roberto_linesensor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(roberto_linesensor
+target_link_libraries(roberto_odom
    ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
 )
 
-target_link_libraries(roberto_snake_sensor
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-)
-
-target_link_libraries(roberto_morph_sensor
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-)
-
-target_link_libraries(roberto_snake_sensorv2
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-)
 #############
 ## Install ##
 #############
