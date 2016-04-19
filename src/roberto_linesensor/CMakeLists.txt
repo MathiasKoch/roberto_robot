@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
   roscpp
+  roberto_msgs
 )
 
 find_package(OpenCV 3 REQUIRED)
@@ -137,6 +138,7 @@ add_executable(roberto_linesensor src/main.cpp)
 add_executable(roberto_snake_sensor src/snake_follower.cpp)
 add_executable(roberto_morph_sensor src/morph.cpp)
 add_executable(roberto_snake_sensorv2 src/linesensor_snake_v2.cpp)
+add_executable(roberto_snake_sensorv3 src/linesensor_snake_v3.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(roberto_linesensor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -158,6 +160,11 @@ target_link_libraries(roberto_morph_sensor
 )
 
 target_link_libraries(roberto_snake_sensorv2
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBRARIES}
+)
+
+target_link_libraries(roberto_snake_sensorv3
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
 )

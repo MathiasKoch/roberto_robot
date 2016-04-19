@@ -278,7 +278,7 @@ int main(int argc, char **argv){
 	ros::Publisher pub_battery_diag = n.advertise<std_msgs::String>("battery_diag", 10);
 	ros::Publisher pub_buttons = n.advertise<std_msgs::String>("buttons", 10);
 
-
+	int cnt = 0;
 
 	// Tell ROS how fast to run this node.
   	// Run the main loop at twice the IMU rate
@@ -361,7 +361,7 @@ int main(int argc, char **argv){
 #endif
 
 		if(!calibrateMode){
-			if(pub_battery_stats.getNumSubscribers() > 0){
+			if(pub_battery_stats.getNumSubscribers() > 0 && cnt++%5000==0){
 				// Read and publish Battery stats
 				uint8_t voltage[2];
 				settings.I2CRead(0x0b, 0x09, 2, voltage, "Failed to read battery voltage");

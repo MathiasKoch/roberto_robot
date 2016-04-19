@@ -10,7 +10,8 @@ find_package(catkin REQUIRED
 
 add_message_files(DIRECTORY msg FILES 
 	MotorState.msg
-	JointCommand.msg)
+	JointCommand.msg
+	Line.msg)
 
 
 generate_messages(DEPENDENCIES std_msgs)

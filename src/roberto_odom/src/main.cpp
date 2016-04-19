@@ -15,10 +15,10 @@ double x = 0.0;
 double y = 0.0;
 double th = 0.0;
 
-//tf::TransformBroadcaster odom_broadcaster;
 
 
 void odomCallback(const std_msgs::Float32MultiArray::ConstPtr& od){
+    static tf::TransformBroadcaster odom_broadcaster;
 
     current_time = ros::Time::now();
 
@@ -39,7 +39,7 @@ void odomCallback(const std_msgs::Float32MultiArray::ConstPtr& od){
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
 
     //first, we'll publish the transform over tf
-    /*geometry_msgs::TransformStamped odom_trans;
+    geometry_msgs::TransformStamped odom_trans;
     odom_trans.header.stamp = current_time;
     odom_trans.header.frame_id = "odom";
     odom_trans.child_frame_id = "base_link";
@@ -50,7 +50,7 @@ void odomCallback(const std_msgs::Float32MultiArray::ConstPtr& od){
     odom_trans.transform.rotation = odom_quat;
 
     //send the transform
-    odom_broadcaster.sendTransform(odom_trans);*/
+    odom_broadcaster.sendTransform(odom_trans);
 
 
     nav_msgs::Odometry odom;
@@ -93,6 +93,7 @@ int main(int argc, char **argv)
 	ros::NodeHandle nh;
     current_time = ros::Time::now();
     last_time = ros::Time::now();
+
 
     pub_ = nh.advertise<nav_msgs::Odometry>("odom", 10, true);
 	odom_pub = nh.advertise<nav_msgs::Odometry>("odom_integral", 10, true);

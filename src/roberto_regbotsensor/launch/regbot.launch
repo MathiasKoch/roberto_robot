@@ -1,0 +1,3 @@
+<launch>
+  <node name="roberto_regbotsensor" pkg="roberto_regbotsensor" type="roberto_regbotsensor" respawn="false" output="screen"/>
+</launch>

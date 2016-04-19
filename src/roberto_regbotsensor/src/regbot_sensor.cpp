@@ -59,7 +59,7 @@ float segment_regbot(cv::Mat image){
                 cnt++  ;
         }
     }
-    return cnt/(segment.rows*segment.cols);
+    return ((float)cnt)/(segment.rows*segment.cols);
 
     /*
     high_resolution_clock::time_point t2 = high_resolution_clock::now();

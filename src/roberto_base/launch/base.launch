@@ -36,16 +36,16 @@
 	<node name="roberto_menu" pkg="roberto_menu" type="display_publisher.py" output="screen"/>
 
 
-	<node name="roberto_odom" pkg="roberto_odom" type="roberto_odom" output="screen"/>
+	<!--<node name="roberto_odom" pkg="roberto_odom" type="roberto_odom" output="screen"/>-->
 	
 
 	<node pkg="roberto_teleop" type="roberto_teleop_joy" name="roberto_teleop_joystick">
-    	<param name="scale_angular" value="15.0"/>
-   		<param name="scale_linear" value="1.0"/>
+    	<param name="scale_angular" value="13.0"/>
+   		<param name="scale_linear" value="2.0"/>
     	<remap from="roberto_teleop_joystick/cmd_vel" to="raw_joy_vel"/>
   	</node>
 
-  	<node name="throttler" type="throttle" pkg="topic_tools" args="messages /raw_joy_vel 10 /throttled_joy_vel" >
+  	<node name="throttler" type="throttle" pkg="topic_tools" args="messages /raw_joy_vel 10 /cmd_vel" >
   		<param name="lazy" value="true" />
   	</node>
 

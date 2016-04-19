@@ -93,18 +93,18 @@ void RobertoTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
   last_published_ = vel;*/
 
   if(!init5){
-    if(joy->axes[5] != 0){
+    if(joy->axes[5] != 1){
       init5 = true;
     }
   }
 
   if(!init2){
-    if(joy->axes[2] != 0){
+    if(joy->axes[2] != 1){
       init2 = true;
     }
   }
 
-  double scale = l_scale_;
+  double scale = l_scale_/2;
   roberto_msgs::MotorState vel;
   if(joy->buttons[0]){
     scale = scale*0.5;
@@ -118,7 +118,10 @@ void RobertoTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
     vel.heading_angle = a_scale_*joy->axes[angular_];
     vel.mode = vel.DRIVE_MODE_PIVOT;
   }
-  vel.speed = (scale*(joy->axes[2]-1)) - (scale*(joy->axes[5]-1));
+  if(init2 && init5)
+    vel.speed = (scale*(joy->axes[2]-1)) - (scale*(joy->axes[5]-1));
+  else
+    vel.speed = 0.0;
   last_published_ = vel;
   deadman_pressed_ = joy->buttons[deadman_axis_];
 }
