@@ -6,9 +6,10 @@
     <param name="pixel_format" value="yuyv" />
     <param name="camera_frame_id" value="usb_cam" />
     <param name="io_method" value="mmap"/>
-    <param name="framerate" value="60"/>
+    <param name="framerate" value="30"/>
   </node>
-  <node name="opencv3_test_node" pkg="opencv3_test" type="opencv3_test_node" respawn="false" output="screen">
+  
+  <node name="roberto_booksensor" pkg="roberto_booksensor" type="roberto_booksensor" respawn="false" output="screen">
     <remap from="image" to="/usb_cam/image_raw"/>
     <param name="autosize" value="true" />
   </node>

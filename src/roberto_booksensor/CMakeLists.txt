@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(opencv3_test)
+project(roberto_booksensor)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -8,9 +8,12 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
   roscpp
+  roberto_msgs
 )
 
 find_package(OpenCV 3 REQUIRED)
+
+set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -103,7 +106,7 @@ find_package(OpenCV 3 REQUIRED)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES opencv3_test
+#  LIBRARIES roberto_booksensor
 #  CATKIN_DEPENDS cv_bridge roscpp
 #  DEPENDS system_lib
 )
@@ -120,29 +123,29 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
 )
 
-
 ## Declare a C++ library
-# add_library(opencv3_test
-#   src/${PROJECT_NAME}/opencv3_test.cpp
+# add_library(roberto_booksensor
+#   src/${PROJECT_NAME}/roberto_booksensor.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(opencv3_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(roberto_booksensor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(opencv3_test_node src/main.cpp)
+add_executable(roberto_booksensor src/main.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(opencv3_test_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(roberto_booksensor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(opencv3_test_node
+target_link_libraries(roberto_booksensor
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
 )
+
 
 #############
 ## Install ##
@@ -159,7 +162,7 @@ target_link_libraries(opencv3_test_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS opencv3_test opencv3_test_node
+# install(TARGETS roberto_booksensor opencv3_test
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
