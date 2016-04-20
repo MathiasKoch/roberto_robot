@@ -8,6 +8,7 @@ import random
 from std_msgs.msg import String
 from roberto_msgs.msg import Line
 from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32
 from roberto_msgs.msg import MotorState
 
 
@@ -15,45 +16,19 @@ import threading
 
 #pub = rospy.Publisher('chatter', String, queue_size=10)
 motor_pub = rospy.Publisher('cmd_vel', MotorState, queue_size=10)
+line_pub = rospy.Publisher('linesensor_active', Float32, queue_size=10)
 rate = None
 
 DEFAULT_TIMEOUT = 15
 
 linesensor_angle = 0
-spin_done = False;
+spin_done = False
 
-followLineId = -1;
+followLineId = -1
 
-# BASIC CLASSES TO SUBCLASS
-
-def linesensor_callback(data):
-	global followLineId
-	global linesensor_angle
-	if data.length > 0:
-		lineStillAvailable = False
-		for id_ in data.id:
-			if id_ == followLineId:
-				lineStillAvailable = True
-
-		if not lineStillAvailable:
-			i = 0
-			minVal = 10000
-			minId = 0
-			for i in range(0,data.length-1):
-				val = abs(data.center[i] - linesensor_angle) + abs(data.width[i] - 35)
-				if (val<minVal):
-					minVal = val
-					minId = i
-				i = i+1
-			followLineId = data.id[minId]
-
-		cnt = 0
-		for id_ in data.id:
-			if id_ == followLineId:
-				linesensor_angle = data.center[cnt]
-			cnt = cnt + 1
-		print "following line %u" % followLineId
-		#print linesensor_angle;
+joyTimeout = 0.5
+joyTime = None
+joyActive = False
 
 
 def spin_callback(data):
@@ -62,6 +37,12 @@ def spin_callback(data):
 	#	spin_done = True
 	#else:
 	spin_done = False
+
+def joy_callback(data):
+	global joyTime
+	global joyActive
+	joyTime = rospy.Time.now()
+	joyActive = True
 
 
 # Check steps are fast checks for checking wether an action is completed
@@ -79,6 +60,8 @@ class Action(smach.State):
 		self._initial_time = None
 
 	def execute(self, userdata):
+		global joyTime
+		global joyTimeout
 		# initial run
 		if not self._initial_time:
 			self._initial_time = rospy.Time.now()
@@ -87,9 +70,14 @@ class Action(smach.State):
 		# sleep to rate
 		rate.sleep()
 
+		# check Joystick timeout on message
+		if rospy.Time.now() - joyTime > rospy.Duration.from_sec(joyTimeout):
+			joyActive = False
+
 		# check timeout
 		if rospy.Time.now() - self._initial_time > self._exec_timeout:
 			return "timeout"
+
 
 		return self.executeAction(userdata)
 
@@ -105,11 +93,11 @@ class Drive(Action):
 		self.speed = speed
 
 	def executeAction(self, userdata):
-		msg = MotorState()
-		msg.speed = self.speed
-		msg.heading_angle = 0
-		msg.mode = msg.DRIVE_MODE_PIVOT
-		print msg.heading_angle;
+		#msg = MotorState()
+		#msg.speed = self.speed
+		#msg.heading_angle = 0
+		#msg.mode = msg.DRIVE_MODE_PIVOT
+		#print msg.heading_angle;
 		#motor_pub.publish(msg)
 		return 'confirm'
 
@@ -119,13 +107,13 @@ class Followline(Action):
 		self.speed = speed
 
 	def executeAction(self, userdata):
-		global linesensor_angle
-		msg = MotorState()
-		msg.speed = self.speed
-		msg.heading_angle = -linesensor_angle*0.13
-		msg.mode = msg.DRIVE_MODE_PIVOT
-		print msg.heading_angle;
-		motor_pub.publish(msg)
+		global joyActive
+		activate = Float32()
+		if not joyActive:
+			activate.data = self.speed
+		else:
+			activate.data = 0.0
+		line_pub.publish(activate)
 		return 'confirm'
 
 class Spin(Action):
@@ -135,11 +123,11 @@ class Spin(Action):
 		self.angle = angle
 
 	def executeAction(self, userdata):
-		msg = MotorState()
-		msg.speed = self.speed
-		msg.heading_angle = self.angle
-		msg.mode = msg.DRIVE_MODE_SPIN
-		motor_pub.publish(msg)
+		#msg = MotorState()
+		#msg.speed = self.speed
+		#msg.heading_angle = self.angle
+		#msg.mode = msg.DRIVE_MODE_SPIN
+		#motor_pub.publish(msg)
 		return 'confirm'
 
 
@@ -237,8 +225,8 @@ def main():
     global rate
     rate = rospy.Rate(10)
 
-    rospy.Subscriber("line", Line, linesensor_callback)
-    rospy.Subscriber("odom_vel", Float32MultiArray, spin_callback)
+    #rospy.Subscriber("odom_vel", Float32MultiArray, spin_callback)
+    rospy.Subscriber("cmd_joy_vel", MotorState, joy_callback)
     # Create a SMACH state machine
     sm = smach.StateMachine(outcomes=['done'])
 

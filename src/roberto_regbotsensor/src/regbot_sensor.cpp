@@ -9,7 +9,7 @@
 #include <chrono>
 
 
-//image_transport::Publisher pub;
+image_transport::Publisher pub;
 
 
 int hueMin = 120;
@@ -26,10 +26,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
     cv_bridge::CvImagePtr cv_ptr;
     cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
     float regbot = segment_regbot(cv_ptr->image);
-    std_msgs::Float32 msg_out;
+    ROS_ERROR("Regbot: %f", regbot);
+    /*std_msgs::Float32 msg_out;
     msg_out.data = regbot;
-    pubRegbot.publish(msg_out);
-    //pub.publish(cv_ptr->toImageMsg());
+    pubRegbot.publish(msg_out);*/
+
+
+    
 
     /*cv_bridge::CvImagePtr cv_ptrS;
     cv_ptrS->image = sampled;
@@ -59,13 +62,21 @@ float segment_regbot(cv::Mat image){
                 cnt++  ;
         }
     }
-    return ((float)cnt)/(segment.rows*segment.cols);
 
-    /*
-    high_resolution_clock::time_point t2 = high_resolution_clock::now();
+    cv::cvtColor(channel, channel, CV_GRAY2BGR);
+
+    cv_bridge::CvImagePtr ptr;
+
+    ptr->image = channel;
+    pub.publish(ptr->toImageMsg());
+
+    return ((float)cnt)/(segment.rows*segment.cols);
+    
+    /*high_resolution_clock::time_point t2 = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>( t2 - t1 ).count();
-    cout << "timing: " << duration << " uS" << endl;
-    */
+    cout << "timing: " << duration << " uS" << endl;*/
+
+    
 }
 
 int main(int argc, char **argv)
@@ -79,7 +90,7 @@ int main(int argc, char **argv)
     }
 
     image_transport::ImageTransport it(nh);
-    //pub = it.advertise("usb_cam/regbot", 1);
+    pub = it.advertise("usb_cam/regbot", 1);
     
     pubRegbot = nh.advertise<std_msgs::Float32>("regbot_sensor/regbot", 1);
     
