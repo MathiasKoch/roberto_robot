@@ -9,7 +9,7 @@
 #include <iostream>
 #include <iomanip>
 #include "std_msgs/String.h"
-
+#include <dirent.h>
 
 using namespace cv;
 using namespace std;
@@ -31,14 +31,14 @@ Ptr<DescriptorMatcher> matcher;
 
 vector<Mat> books;
 
-vector<KeyPoint> kpbooks[4];
+vector<vector<KeyPoint>> kpbooks;
 vector<KeyPoint> kp;
 
-Mat descbooks[4];
+vector<Mat> descbooks;
 Mat desc;
 
 // Default parameters of ORB
-int nfeatures=1000;
+int nfeatures=2500;
 float scaleFactor=1.2f;
 int nlevels=8;
 int edgeThreshold=15; // Changed default (31);
@@ -59,9 +59,9 @@ int frameCnt = 0;
 void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 
     if(running){
-    	cv_bridge::CvImagePtr cv_ptr;
-    	cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
-    	cv::Mat img = cv_ptr->image;
+        cv_bridge::CvImagePtr cv_ptr;
+        cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
+        cv::Mat img = cv_ptr->image;
 
 
         detector->detectAndCompute(img, noArray(), kp, desc);
@@ -87,8 +87,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
                     matched2.push_back(kp[matches[i][0].trainIdx]);
                 }
             }
+//            ROS_INFO("Match found! Image matches book %d", (int)matched1.size());
 
-            if((int)matched1.size() > 170){
+            if((int)matched1.size() > 50){
                 matched = bookCnt;
                 break;
             }
@@ -144,13 +145,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "book_node");
-	ros::NodeHandle nh;
+    ros::init(argc, argv, "book_node");
+    ros::NodeHandle nh;
 
-	if ( CV_MAJOR_VERSION == 2){
-		ROS_ERROR("CV_MAJOR_VERSION == 2");
-		return 0;
-	}
+    if ( CV_MAJOR_VERSION == 2){
+        ROS_ERROR("CV_MAJOR_VERSION == 2");
+        return 0;
+    }
 
 
     detector = ORB::create(
@@ -167,19 +168,40 @@ int main(int argc, char **argv)
     matcher = DescriptorMatcher::create("BruteForce-Hamming");
 
 
-    books.push_back(imread("/home/mathias/book1.jpg"));
-    books.push_back(imread("/home/mathias/book2.jpg"));
-    books.push_back(imread("/home/mathias/book3.jpg"));
-    books.push_back(imread("/home/mathias/book4.jpg"));
+    DIR *dpdf;
+    struct dirent *epdf;
 
-    detector->detectAndCompute(books[0], noArray(), kpbooks[0], descbooks[0]);
-    detector->detectAndCompute(books[1], noArray(), kpbooks[1], descbooks[1]);
-    detector->detectAndCompute(books[2], noArray(), kpbooks[2], descbooks[2]);
-    detector->detectAndCompute(books[3], noArray(), kpbooks[3], descbooks[3]);
+    char path[] = "/home/odroid/images/";
 
-	image_transport::ImageTransport it(nh);
-	pub = it.advertise("usb_cam/image_book_matching", 1);
-	image_transport::Subscriber sub = it.subscribe("usb_cam/image_raw", 1, imageCallback);
-	ros::spin();
-	return 0;
+    dpdf = opendir(path);
+    if (dpdf != NULL){
+        while (epdf = readdir(dpdf)){
+            // std::cout << epdf->d_name << std::endl;
+            if(strstr(epdf->d_name, ".jpg") != NULL || strstr(epdf->d_name, ".png") != NULL){
+                char str[80];
+                sprintf(str, "%s%s", path, epdf->d_name);
+                ROS_INFO("Found book: %s", str);
+                books.push_back(imread(str));
+            }
+        }
+    }
+    closedir(dpdf);    
+
+    int i = 0;
+    for(i = 0; i < books.size(); i++){
+        vector<KeyPoint> kp_;
+        Mat desc_;
+        detector->detectAndCompute(books[i], noArray(), kp_, desc_);
+        kpbooks.push_back(kp_);
+        descbooks.push_back(desc_);
+
+    }
+   
+
+    image_transport::ImageTransport it(nh);
+    pub = it.advertise("usb_cam/image_book_matching", 1);
+    image_transport::Subscriber sub = it.subscribe("usb_cam/image_raw", 1, imageCallback);
+    ros::spin();
+
+    return 0;
 }

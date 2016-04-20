@@ -38,13 +38,20 @@ int maxLineId = 0;
 
 cv::Mat sampled(rSteps, thetaSteps, CV_8UC3);
 
-bool black = true;
+bool black = false;
+bool goRight = true;
+
 image_transport::Publisher pub;
 ros::Publisher line_pub;
 ros::Publisher motor_pub;
 
 int linesensor_angle;
-float speed = 0.35;
+
+float speed = 0.5;
+
+int lostCounter = 0;
+float lostSpinSpeed = 0.2;
+int lineLastSeen = 0;
 
 // Prototypes
 void findLine(cv::Mat sampled, bool wrap);
@@ -57,6 +64,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg);
 
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg){
+    high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
     cv_bridge::CvImagePtr cv_ptr;
     cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
     cv::Mat image = cv_ptr->image;
@@ -64,6 +73,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
     width = image.cols;
     //sample(image);
 
+
+    // Segment line
     cv::Rect roi(0, image.rows/2,image.cols,image.rows/2);
     image = image(roi);
     cv::cvtColor(image, image, CV_BGR2GRAY);
@@ -87,6 +98,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
     int largest_area = -1;
     int largest_contour_index = 0;
     cv::Rect bounding_rect;
+    vector<vector<Point> >hull(1);
     if(contours.size()){
         for( int i = 0; i< contours.size(); i++ ) // iterate through each contour. 
         {
@@ -97,34 +109,113 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
             }
         }      
         bounding_rect = boundingRect(contours[largest_contour_index]);
-
-        cout << endl << contours[largest_contour_index] << endl;
+        cv::convexHull( cv::Mat(contours[largest_contour_index]), hull[0], false );
+        //cout << endl << largest_area << endl;
     }
- 
 
-
+    // change to bgr for plotting
     cv::cvtColor(image, image, CV_GRAY2BGR);
     
-    if(contours.size()){
+    float driveTowards = 0;
+    float speedMultiplier = 1;
+    //cout << "@ " << upperPoint << endl;
+    //50 is magic size constant of minimum line size
+    if(largest_area > 50 && contours.size()){
+        //Draw on image for debugging
         drawContours( image, contours, largest_contour_index, cv::Scalar(255,255,255), CV_FILLED, 8, hierarchy); // Draw the largest contour using previously stored index.
         rectangle(image, bounding_rect,  Scalar(0,255,0),1, 8,0);
+        drawContours( image, hull, 0, cv::Scalar(0,0,255), 1, 8, vector<Vec4i>(), 0, Point() );
+
+        //compensation terms
+        int lowerPoint = 0;
+        float upperPoint = 0;
+
+        // drive towards the outer boundary to the followed side if bounding rect larger than constant otherwise drive towards center
+        if (bounding_rect.width > 12){
+            upperPoint = bounding_rect.x;
+            upperPoint += goRight ? bounding_rect.width : 0;
+            
+            int cnt = 0;
+            for(cv::Point h : hull[0]){
+                if(h.y <= bounding_rect.y + 1){
+                    if((goRight && h.x < upperPoint) || (!goRight && h.x > upperPoint)){
+                        upperPoint = h.x;
+                    }
+                }
+                if(h.y >= bounding_rect.y + bounding_rect.height - 1){
+                    cnt++;
+                    lowerPoint = lowerPoint + h.x;
+                }
+            }
+            // Average h.x
+            if(cnt>0){
+                lowerPoint /= cnt;
+            }
+        }else{
+            upperPoint = bounding_rect.x + bounding_rect.width/2.0;
+            lowerPoint = upperPoint;
+        }
+        image.at<cv::Vec3b>(0, upperPoint) = cv::Vec3b(255,0,0);
+        image.at<cv::Vec3b>(0, lowerPoint) = cv::Vec3b(0,255,0);
+
+        //rescale from downsized image
+        float alpha = 0.8;
+        
+        float deltaX = upperPoint - lowerPoint;
+        driveTowards = alpha*upperPoint + (1-alpha)*lowerPoint;
+        if((deltaX > 0 && lowerPoint < image.cols/2) || (deltaX < 0 && lowerPoint > image.cols/2))
+        {
+            if((upperPoint > image.cols/2 && lowerPoint < image.cols/2) || (upperPoint < image.cols/2 && lowerPoint > image.cols/2))
+            {
+                driveTowards = image.cols/2;
+            }else{
+                driveTowards = upperPoint;
+            }
+        }
+        image.at<cv::Vec3b>(0, driveTowards) = cv::Vec3b(255,255,0);
+        
+        //driveTowards in original image pixels
+        driveTowards = (driveTowards - image.cols/2)*4;
+
+        //rescale between 0.5 and 1
+        speedMultiplier = std::min(std::max((200-abs(driveTowards))/200.0f, 0.6f), 1.0f);
+
+        //cout << "speedMultiplier " << speedMultiplier << ", " << ((15-driveTowards)/15.0f)<< endl;
+
+        //Keep track of line
+        lostCounter = 0;
+        lineLastSeen = driveTowards;
+    }else{
+        // No line detected
+        ROS_INFO("No line found");
+        lostCounter++;
+    } 
+    
+    //cout << "Angle " << -driveTowards*pixel2Angle << endl;
+    //cout << "speedMultiplier " << speedMultiplier << endl;
+
+    if(speed != 0){
+        if(lostCounter < 5){
+            roberto_msgs::MotorState motor_msg;
+            motor_msg.speed = speed*speedMultiplier;
+            motor_msg.heading_angle = -driveTowards*pixel2Angle;
+            motor_msg.mode = motor_msg.DRIVE_MODE_PIVOT;
+            motor_pub.publish(motor_msg);
+        }else{
+            // Search for line
+            roberto_msgs::MotorState motor_msg;
+            motor_msg.speed = ((lineLastSeen >= 0) ? -1 : 1) * 0.27;
+            motor_msg.heading_angle = 0;
+            motor_msg.mode = motor_msg.DRIVE_MODE_SPIN;
+            motor_pub.publish(motor_msg);
+        }
     }
 
     cv_ptr->image = image;
-    
 
-
-    /*roberto_msgs::Line linemsg;
-    linemsg.length = lines.size();
-    
-    for(auto line : lines){
-        linemsg.id.push_back(line->id);
-        linemsg.start.push_back(line->start - width/2);
-        linemsg.end.push_back(line->end - width/2);
-        linemsg.center.push_back(line->center - width/2);
-        linemsg.width.push_back(line->width);
-    }
-    line_pub.publish(linemsg);*/
+    high_resolution_clock::time_point t2 = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>( t2 - t1 ).count();
+    //  cout << "timing: " << duration << " uS" << endl;
 
     pub.publish(cv_ptr->toImageMsg());
 }
@@ -256,6 +347,7 @@ void followLine(cv::Mat image, cv::Point center, cv::Point lastPoint, int depthL
 }
 
 void sample(cv::Mat image){
+    /*
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
     
     sampleLine(image);
@@ -289,14 +381,6 @@ void sample(cv::Mat image){
         //sampleCircle(image, cv::Point(lines[selectLine]->center, height));
         //followLine()
 
-
-        if(speed != 0){
-            roberto_msgs::MotorState motor_msg;
-            motor_msg.speed = 0.0;
-            motor_msg.heading_angle = -(linesensor_angle - width/2)*0.13;
-            motor_msg.mode = motor_msg.DRIVE_MODE_PIVOT;
-            motor_pub.publish(motor_msg);
-        }
     }
 
 
@@ -318,9 +402,8 @@ void sample(cv::Mat image){
 
 
 
-    high_resolution_clock::time_point t2 = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>( t2 - t1 ).count();
-    ////cout << "timing: " << duration << " uS" << endl;
+
+    */
 }
 
 int main(int argc, char **argv)
