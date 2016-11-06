@@ -21,6 +21,60 @@
     />
   </xacro:macro>
 
+
+  <!--  
+      Parameters:
+        fr = [front | rear]   - Used for placement
+        lr = [left | right]   - Used for placement
+        tY = [-1 | 1]         - Used for placement
+        tX = [-1 | 1]         - Used for placement
+        adjust = [R]          - Adjusts the wheelbase, for wider rear tires
+        ll = [R]              - Lower limit of servo
+        ul = [R]              - Upper limit of servo
+  -->
+  <xacro:macro name="motorMount" params="fr lr tY tX adjust ll ul">
+    <link name="${fr}_${lr}_motor_mount">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 ${PI/2} 0" />
+        <geometry>
+          <cylinder length="${motorMountLength+adjust}" radius="${motorMountRadius}"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="0 ${PI/2} 0" />
+        <geometry>
+          <cylinder length="${motorMountLength+adjust}" radius="${motorMountRadius}"/>
+        </geometry>
+        <material name="grey"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 ${PI/2} 0" />
+        <mass value="${motorMountMass}"/>
+        <xacro:cylinder_inertia m="${motorMountMass}" r="${motorMountRadius}" h="${motorMountLength+adjust}"/>
+      </inertial>
+    </link>
+
+    <gazebo reference="${fr}_${lr}_motor_mount">
+      <mu1 value="0.2"/>
+      <mu2 value="0.2"/>
+      <kp value="10000"/>
+      <kd value="1"/>
+      <material>Gazebo/Grey</material>
+    </gazebo>
+
+
+    <joint name="servo_${fr}_${lr}" type="revolute">
+      <parent link="platform"/>
+      <child link="${fr}_${lr}_motor_mount"/>
+      <origin xyz="${motorMountPos*tX} ${motorMountPos*tY} ${wheelRadius}" rpy="0 0 0" />
+      <axis xyz="0 0 1" rpy="0 0 0" />
+      <limit effort="1000.0" velocity="4" lower="${ll}" upper="${ul}"/>
+    </joint>
+
+  </xacro:macro>
+
   <xacro:macro name="frontWheel" params="lr tY">
     <link name="front_${lr}_wheel">
       <collision>
@@ -63,17 +117,6 @@
       <joint_properties damping="0.0" friction="0.0"/>
     </joint>
 
-
-    <transmission name="front_${lr}_trans">
-      <type>transmission_interface/SimpleTransmission</type>
-      <joint name="front_${lr}_wheel_hinge">
-        <hardwareInterface>EffortJointInterface</hardwareInterface>
-      </joint>
-      <actuator name="front_${lr}_Motor">
-        <hardwareInterface>EffortJointInterface</hardwareInterface>
-        <mechanicalReduction>8</mechanicalReduction>
-      </actuator>
-    </transmission>
 
     </xacro:macro>
 
@@ -121,74 +164,6 @@
         <limit effort="10" velocity="4"/>
         <joint_properties damping="0.0" friction="0.0"/>
       </joint>
-
-
-      <transmission name="rear_${lr}_trans">
-        <type>transmission_interface/SimpleTransmission</type>
-        <joint name="rear_${lr}_wheel_hinge">
-          <hardwareInterface>EffortJointInterface</hardwareInterface>
-        </joint>
-        <actuator name="rear_${lr}_Motor">
-          <hardwareInterface>EffortJointInterface</hardwareInterface>
-          <mechanicalReduction>8</mechanicalReduction>
-        </actuator>
-      </transmission>
-
-    </xacro:macro>
-
-
-    <xacro:macro name="motorMount" params="fr lr tY tX adjust">
-    <link name="${fr}_${lr}_motor_mount">
-      <collision>
-        <origin xyz="0 0 0" rpy="0 ${PI/2} 0" />
-        <geometry>
-          <cylinder length="${motorMountLength+adjust}" radius="${motorMountRadius}"/>
-        </geometry>
-      </collision>
-
-      <visual>
-        <origin xyz="0 0 0" rpy="0 ${PI/2} 0" />
-        <geometry>
-          <cylinder length="${motorMountLength+adjust}" radius="${motorMountRadius}"/>
-        </geometry>
-        <material name="grey"/>
-      </visual>
-
-      <inertial>
-        <origin xyz="0 0 0" rpy="0 ${PI/2} 0" />
-        <mass value="${motorMountMass}"/>
-        <xacro:cylinder_inertia m="${motorMountMass}" r="${motorMountRadius}" h="${motorMountLength+adjust}"/>
-      </inertial>
-    </link>
-
-    <gazebo reference="${fr}_${lr}_motor_mount">
-      <mu1 value="0.2"/>
-      <mu2 value="0.2"/>
-      <kp value="10000"/>
-      <kd value="1"/>
-      <material>Gazebo/Grey</material>
-    </gazebo>
-
-
-    <joint name="servo_${fr}_${lr}" type="revolute">
-      <parent link="platform"/>
-      <child link="${fr}_${lr}_motor_mount"/>
-      <origin xyz="${motorMountPos*tX} ${motorMountPos*tY} ${wheelRadius}" rpy="0 0 0" />
-      <axis xyz="0 0 1" rpy="0 0 0" />
-      <limit effort="1000.0" velocity="4" lower="${-0.2618*tX*tY}" upper="${1.57*tX*tY}"/>
-    </joint>
-
-
-    <transmission name="${fr}_${lr}_servo_trans">
-      <type>transmission_interface/SimpleTransmission</type>
-      <joint name="servo_${fr}_${lr}">
-        <hardwareInterface>EffortJointInterface</hardwareInterface>
-      </joint>
-      <actuator name="${fr}_${lr}_Servo">
-        <hardwareInterface>EffortJointInterface</hardwareInterface>
-        <mechanicalReduction>1</mechanicalReduction>
-      </actuator>
-    </transmission>
 
     </xacro:macro>
 

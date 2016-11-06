@@ -70,10 +70,10 @@
 		</inertial>
 	</link>
 
-	<xacro:motorMount fr="front" lr="left" tX="-1" tY="1" adjust="0" />
-	<xacro:motorMount fr="front" lr="right" tX="1" tY="1" adjust="0" />
-	<xacro:motorMount fr="rear" lr="left" tX="-1" tY="-1" adjust="0.01" />
-	<xacro:motorMount fr="rear" lr="right" tX="1" tY="-1" adjust="0.01" />
+	<xacro:motorMount fr="rear" lr="right" tX="1" tY="-1" adjust="0.01" ll="-1.57" ul="0.2618"/>
+	<xacro:motorMount fr="rear" lr="left" tX="-1" tY="-1" adjust="0.01" ll="-0.2618" ul="1.57"/>
+	<xacro:motorMount fr="front" lr="left" tX="-1" tY="1" adjust="0" ll="-1.57" ul="0.2618"/>
+	<xacro:motorMount fr="front" lr="right" tX="1" tY="1" adjust="0" ll="-0.2618" ul="1.57"/>
 
 	<xacro:frontWheel lr="left" tY="-1"/>
 	<xacro:frontWheel lr="right" tY="1"/>

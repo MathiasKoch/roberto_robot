@@ -2,7 +2,7 @@
 
 Roberto the robot is a 4 wheeled robot, built for DTU's annual Robocup competition. The competition requires mobile robots to complete a track with a number of different obstacles and tasks to be completed. More info can be found on http://www.robocup.dtu.dk/ (Only available in Danish).
 
-Roberto controls it's wheels in pairs (Left and Right respectively) in order to allow pivot sterring, turning around center and sideways locomotion.
+Roberto controls it's wheels in pairs (Left and right respectively) in order to allow pivot sterring, turning around center and sideways locomotion.
 
 ![DriveModes](http://i.imgur.com/0CxI1aK.png)
 
@@ -25,10 +25,10 @@ To set up a working ros install, with all required packages for Roberto to compi
 http://wiki.ros.org/indigo/Installation/Ubuntu
 
 Furthermore a bunch of linux packages is required in order for the source code to compile:
-```sudo apt-get install libi2c-dev```
+```sudo apt-get install build-essential cmake libi2c-dev```
 
 To run the Roberto simulator, a bunch of ros packages are also needed in order to make it compile and run:
-```sudo apt-get install ros-indigo-rosserial-client ros-indigo-rosserial-arduino ros-indigo-rosserial-server ros-indigo-rosserial-msgs ros-indigo-rosserial-python ros-indigo-ros-control ros-indigo-ros-controllers ros-indigo-usb-cam```
+```sudo apt-get install ros-indigo-rosserial-client ros-indigo-rosserial-arduino ros-indigo-rosserial-server ros-indigo-rosserial-msgs ros-indigo-rosserial-python ros-indigo-ros-control ros-indigo-ros-controllers ros-indigo-usb-cam ros-indigo-joy ros-indigo-geographic-msgs```
 
 ### ARM and AVR compilers and tools
 
