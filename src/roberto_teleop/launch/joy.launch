@@ -9,7 +9,7 @@
   <node pkg="roberto_teleop" type="roberto_teleop_joy" name="roberto_teleop_joystick">
     <param name="scale_angular" value="1.0"/>
     <param name="scale_linear" value="1.0"/>
-    <remap from="roberto_teleop_joystick/cmd_vel" to="raw_cmd_vel"/>
+    <remap from="roberto_teleop_joystick/cmd_vel" to="roberto/cmd_vel"/>
   </node>
 
   <node pkg="joy" type="joy_node" name="joystick" />

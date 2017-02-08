@@ -34,16 +34,19 @@ from geometry_msgs.msg import Twist
 import sys, select, termios, tty
 
 msg = """
-Control Your Turtlebot!
+Control Roberto!
 ---------------------------
 Moving around:
    u    i    o
    j    k    l
-   m    ,    .
+   m 		 .
 
+u/o : sideways movement
+i/k : speed control
+j/k : turn with given turn-radius
+m/. : spin around center, CCW/CW
 q/z : increase/decrease max speeds by 10%
-w/x : increase/decrease only linear speed by 10%
-e/c : increase/decrease only angular speed by 10%
+w/x : increase/decrease turn-radius by 2 degrees
 space key, k : force stop
 anything else : stop smoothly
 
