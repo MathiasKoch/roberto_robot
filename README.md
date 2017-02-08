@@ -30,6 +30,9 @@ Furthermore a bunch of linux packages is required in order for the source code t
 To run the Roberto simulator, a bunch of ros packages are also needed in order to make it compile and run:
 ```sudo apt-get install ros-indigo-rosserial-client ros-indigo-rosserial-arduino ros-indigo-rosserial-server ros-indigo-rosserial-msgs ros-indigo-rosserial-python ros-indigo-ros-control ros-indigo-ros-controllers ros-indigo-usb-cam ros-indigo-joy ros-indigo-geographic-msgs```
 
+
+```sudo apt-get install ros-kinetic-rosserial-client ros-kinetic-rosserial-arduino ros-kinetic-rosserial-server ros-kinetic-rosserial-msgs ros-kinetic-rosserial-python ros-kinetic-ros-control ros-kinetic-ros-controllers ros-kinetic-joy ros-kinetic-geographic-msgs```
+
 ### ARM and AVR compilers and tools
 
 `To be written: Install of arm-none-eabi, openocd, avr-gcc, avrdude and script for rosserial-arduino fix`
