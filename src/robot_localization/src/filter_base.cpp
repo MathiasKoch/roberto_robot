@@ -41,6 +41,15 @@
 namespace RobotLocalization
 {
   FilterBase::FilterBase() :
+    accelerationGains_(TWIST_SIZE, 0.0),
+    accelerationLimits_(TWIST_SIZE, 0.0),
+    decelerationGains_(TWIST_SIZE, 0.0),
+    decelerationLimits_(TWIST_SIZE, 0.0),
+    controlAcceleration_(TWIST_SIZE),
+    controlTimeout_(0.0),
+    controlUpdateVector_(TWIST_SIZE, 0),
+    dynamicProcessNoiseCovariance_(STATE_SIZE, STATE_SIZE),
+    latestControlTime_(0.0),
     state_(STATE_SIZE),
     predictedState_(STATE_SIZE),
     transferFunction_(STATE_SIZE, STATE_SIZE),
@@ -50,13 +59,16 @@ namespace RobotLocalization
     processNoiseCovariance_(STATE_SIZE, STATE_SIZE),
     identity_(STATE_SIZE, STATE_SIZE),
     debug_(false),
-    debugStream_(NULL)
+    debugStream_(NULL),
+    useControl_(false),
+    useDynamicProcessNoiseCovariance_(false)
   {
     initialized_ = false;
 
     // Clear the state and predicted state
     state_.setZero();
     predictedState_.setZero();
+    controlAcceleration_.setZero();
 
     // Prepare the invariant parts of the transfer
     // function
@@ -104,10 +116,41 @@ namespace RobotLocalization
     processNoiseCovariance_(StateMemberAx, StateMemberAx) = 0.01;
     processNoiseCovariance_(StateMemberAy, StateMemberAy) = 0.01;
     processNoiseCovariance_(StateMemberAz, StateMemberAz) = 0.015;
+
+    dynamicProcessNoiseCovariance_ = processNoiseCovariance_;
   }
 
   FilterBase::~FilterBase()
   {
+  }
+
+  void FilterBase::computeDynamicProcessNoiseCovariance(const Eigen::VectorXd &state, const double delta)
+  {
+    // A more principled approach would be to get the current velocity from the state, make a diagonal matrix from it,
+    // and then rotate it to be in the world frame (i.e., the same frame as the pose data). We could then use this
+    // rotated velocity matrix to scale the process noise covariance for the pose variables as
+    // rotatedVelocityMatrix * poseCovariance * rotatedVelocityMatrix'
+    // However, this presents trouble for robots that may incur rotational error as a result of linear motion (and
+    // vice-versa). Instead, we create a diagonal matrix whose diagonal values are the vector norm of the state's
+    // velocity. We use that to scale the process noise covariance.
+    Eigen::MatrixXd velocityMatrix(TWIST_SIZE, TWIST_SIZE);
+    velocityMatrix.setIdentity();
+    velocityMatrix.diagonal() *= state.segment(POSITION_V_OFFSET, TWIST_SIZE).norm();
+
+    dynamicProcessNoiseCovariance_.block<TWIST_SIZE, TWIST_SIZE>(POSITION_OFFSET, POSITION_OFFSET) =
+      velocityMatrix *
+      processNoiseCovariance_.block<TWIST_SIZE, TWIST_SIZE>(POSITION_OFFSET, POSITION_OFFSET) *
+      velocityMatrix.transpose();
+  }
+
+  const Eigen::VectorXd& FilterBase::getControl()
+  {
+    return latestControl_;
+  }
+
+  double FilterBase::getControlTime()
+  {
+    return latestControlTime_;
   }
 
   bool FilterBase::getDebug()
@@ -178,8 +221,7 @@ namespace RobotLocalization
       if (delta > 0)
       {
         validateDelta(delta);
-
-        predict(delta);
+        predict(measurement.time_, delta);
 
         // Return this to the user
         predictedState_ = state_;
@@ -227,6 +269,25 @@ namespace RobotLocalization
     FB_DEBUG("------ /FilterBase::processMeasurement (" << measurement.topicName_ << ") ------\n");
   }
 
+  void FilterBase::setControl(const Eigen::VectorXd &control, const double controlTime)
+  {
+    latestControl_ = control;
+    latestControlTime_ = controlTime;
+  }
+
+  void FilterBase::setControlParams(const std::vector<int> &updateVector, const double controlTimeout,
+    const std::vector<double> &accelerationLimits, const std::vector<double> &accelerationGains,
+    const std::vector<double> &decelerationLimits, const std::vector<double> &decelerationGains)
+  {
+    useControl_ = true;
+    controlUpdateVector_ = updateVector;
+    controlTimeout_ = controlTimeout;
+    accelerationLimits_ = accelerationLimits;
+    accelerationGains_ = accelerationGains;
+    decelerationLimits_ = decelerationLimits;
+    decelerationGains_ = decelerationGains;
+  }
+
   void FilterBase::setDebug(const bool debug, std::ostream *outStream)
   {
     if (debug)
@@ -245,6 +306,11 @@ namespace RobotLocalization
     {
       debug_ = false;
     }
+  }
+
+  void FilterBase::setUseDynamicProcessNoiseCovariance(const bool useDynamicProcessNoiseCovariance)
+  {
+    useDynamicProcessNoiseCovariance_ = useDynamicProcessNoiseCovariance;
   }
 
   void FilterBase::setEstimateErrorCovariance(const Eigen::MatrixXd &estimateErrorCovariance)
@@ -285,6 +351,33 @@ namespace RobotLocalization
       FB_DEBUG("Delta was very large. Suspect playing from bag file. Setting to 0.01\n");
 
       delta = 0.01;
+    }
+  }
+
+
+  void FilterBase::prepareControl(const double referenceTime, const double predictionDelta)
+  {
+    controlAcceleration_.setZero();
+
+    if (useControl_)
+    {
+      bool timedOut = ::fabs(referenceTime - latestControlTime_) >= controlTimeout_;
+
+      if(timedOut)
+      {
+        FB_DEBUG("Control timed out. Reference time was " << referenceTime << ", latest control time was " <<
+          latestControlTime_ << ", control timeout was " << controlTimeout_ << "\n");
+      }
+
+      for(size_t controlInd = 0; controlInd < TWIST_SIZE; ++controlInd)
+      {
+        if(controlUpdateVector_[controlInd])
+        {
+          controlAcceleration_(controlInd) = computeControlAcceleration(state_(controlInd + POSITION_V_OFFSET),
+            (timedOut ? 0.0 : latestControl_(controlInd)), accelerationLimits_[controlInd],
+            accelerationGains_[controlInd], decelerationLimits_[controlInd], decelerationGains_[controlInd]);
+        }
+      }
     }
   }
 

@@ -20,11 +20,13 @@ find_package(catkin REQUIRED COMPONENTS
 # Attempt to find Eigen using its own CMake module.
 # If that fails, fall back to cmake_modules package.
 find_package(Eigen3)
+set(EIGEN_PACKAGE EIGEN3)
 if(NOT EIGEN3_FOUND)
   find_package(cmake_modules REQUIRED)
   find_package(Eigen REQUIRED)
   set(EIGEN3_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS})
   set(EIGEN3_LIBRARIES ${EIGEN_LIBRARIES})
+  set(EIGEN_PACKAGE Eigen)
 endif()
 
 add_definitions(-DEIGEN_NO_DEBUG -DEIGEN_MPL2_ONLY)
@@ -73,7 +75,7 @@ catkin_package(
     tf2
     tf2_geometry_msgs
     tf2_ros
-  DEPENDS Eigen
+  DEPENDS ${EIGEN_PACKAGE}
 )
 
 ###########
@@ -163,11 +165,19 @@ if (CATKIN_ENABLE_TESTING)
   catkin_add_gtest(filter_base-test test/test_filter_base.cpp)
   target_link_libraries(filter_base-test filter_base ${catkin_LIBRARIES})
 
+  # This test uses ekf_localization node for convenience.
+  add_rostest_gtest(test_filter_base_diagnostics_timestamps
+                    test/test_filter_base_diagnostics_timestamps.test
+                    test/test_filter_base_diagnostics_timestamps.cpp)
+  target_link_libraries(test_filter_base_diagnostics_timestamps ${catkin_LIBRARIES} ${rostest_LIBRARIES})
+  add_dependencies(test_filter_base_diagnostics_timestamps ekf_localization_node)
+
   #### EKF TESTS #####
   add_rostest_gtest(test_ekf
                     test/test_ekf.test
                     test/test_ekf.cpp)
   target_link_libraries(test_ekf ros_filter ekf ${catkin_LIBRARIES} ${rostest_LIBRARIES})
+
 
   add_rostest_gtest(test_ekf_localization_node_interfaces
                     test/test_ekf_localization_node_interfaces.test

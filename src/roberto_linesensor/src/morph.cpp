@@ -88,6 +88,8 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
+	ROS_INFO("Started line sensor");
+
 	image_transport::ImageTransport it(nh);
 	pub = it.advertise("usb_cam/image_filtered", 1);
 	image_transport::Subscriber sub = it.subscribe("usb_cam/image_raw", 1, imageCallback);

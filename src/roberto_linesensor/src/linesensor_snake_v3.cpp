@@ -40,13 +40,17 @@ int maxLineId = 0;
 cv::Mat sampled(rSteps, thetaSteps, CV_8UC3);
 
 bool black = false;
+<<<<<<< HEAD
 bool goRight = true;
 
+=======
+>>>>>>> 42a885dc14d738c64059660359233fb83a2af84f
 image_transport::Publisher pub;
 ros::Publisher line_pub;
 ros::Publisher motor_pub;
 
 int linesensor_angle;
+<<<<<<< HEAD
 
 float speed = 0.0;
 
@@ -54,6 +58,9 @@ int lostCounter = 0;
 float lostSpinSpeed = 0.2;
 int lineLastSeen = 0;
 bool running = false;
+=======
+float speed = 1.0;
+>>>>>>> 42a885dc14d738c64059660359233fb83a2af84f
 
 // Prototypes
 void findLine(cv::Mat sampled, bool wrap);
@@ -84,7 +91,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
     cv::Mat image = cv_ptr->image;
     height = (int)(image.rows * 0.8);
     width = image.cols;
-    //sample(image);
+    sample(image);
 
 
     // Segment line
@@ -394,6 +401,17 @@ void sample(cv::Mat image){
         //sampleCircle(image, cv::Point(lines[selectLine]->center, height));
         //followLine()
 
+<<<<<<< HEAD
+=======
+
+        if(speed != 0){
+            roberto_msgs::MotorState motor_msg;
+            motor_msg.speed = speed;
+            motor_msg.heading_angle = -(linesensor_angle - width/2)*0.13;
+            motor_msg.mode = motor_msg.DRIVE_MODE_PIVOT;
+            motor_pub.publish(motor_msg);
+        }
+>>>>>>> 42a885dc14d738c64059660359233fb83a2af84f
     }
 
 
