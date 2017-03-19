@@ -43,6 +43,8 @@ def joy_callback(data):
 	global joyActive
 	joyTime = rospy.Time.now()
 	joyActive = True
+	motor_pub.publish(data)
+
 
 
 # Check steps are fast checks for checking wether an action is completed
@@ -62,6 +64,7 @@ class Action(smach.State):
 	def execute(self, userdata):
 		global joyTime
 		global joyTimeout
+		global joyActive
 		# initial run
 		if not self._initial_time:
 			self._initial_time = rospy.Time.now()
@@ -78,6 +81,7 @@ class Action(smach.State):
 		if rospy.Time.now() - self._initial_time > self._exec_timeout:
 			return "timeout"
 
+		#print "time: %u" % self._exec_timeout;
 
 		return self.executeAction(userdata)
 
@@ -161,6 +165,12 @@ class CheckLine(Check):
     	return False
     	#return random.randint(0,10)>5
 
+class CheckJoy(Check):
+    def execute(self, userdata):
+    	return joyActive
+
+
+
 class CheckForSpin(Check):
 	def execute(self, userdata):
 		if spin_done:
@@ -187,7 +197,29 @@ class RateChange(smach.State):
 def createlineSM():
     sm = smach.StateMachine(outcomes=['done'])
     with sm:
-        smach.StateMachine.add('Followline', Followline(speed=0.0, timeout=1000000), 
+        smach.StateMachine.add('Followline', Followline(speed=0.4, timeout=1000000), 
+                               transitions={'confirm':'CheckCrossing', 'timeout':'done'})
+        smach.StateMachine.add('CheckCrossing', CheckCrossing(), 
+                               transitions={True:'done', False:"Followline"})
+        #smach.StateMachine.add('CheckWaitFor', CheckWaitFor(), 
+        #                       transitions={True:'done', False:"Followline"})
+    return sm
+
+def createlineSM2():
+    sm = smach.StateMachine(outcomes=['done'])
+    with sm:
+        smach.StateMachine.add('Followline', Followline(speed=0.2, timeout=10), 
+                               transitions={'confirm':'CheckCrossing', 'timeout':'done'})
+        smach.StateMachine.add('CheckCrossing', CheckCrossing(), 
+                               transitions={True:'done', False:"Followline"})
+        #smach.StateMachine.add('CheckWaitFor', CheckWaitFor(), 
+        #                       transitions={True:'done', False:"Followline"})
+    return sm
+
+def createlineSM3():
+    sm = smach.StateMachine(outcomes=['done'])
+    with sm:
+        smach.StateMachine.add('Followline', Followline(speed=0.6, timeout=10), 
                                transitions={'confirm':'CheckCrossing', 'timeout':'done'})
         smach.StateMachine.add('CheckCrossing', CheckCrossing(), 
                                transitions={True:'done', False:"Followline"})
@@ -224,6 +256,8 @@ def main():
     rospy.init_node('smach_example_state_machine')
     global rate
     rate = rospy.Rate(10)
+    global joyTime
+    joyTime = rospy.Time.now()
 
     #rospy.Subscriber("odom_vel", Float32MultiArray, spin_callback)
     rospy.Subscriber("cmd_joy_vel", MotorState, joy_callback)
@@ -232,7 +266,14 @@ def main():
 
     # Open the container
     with sm:
+    	smach.StateMachine.add('checkJoy', CheckJoy(), 
+                               transitions={True:'SUB', False:"checkJoy"})
+        
         smach.StateMachine.add('SUB', createlineSM(),
+        						transitions={'done':'done'})
+        smach.StateMachine.add('SUB2', createlineSM2(),
+        						transitions={'done':'done'})
+        smach.StateMachine.add('SUB3', createlineSM3(),
         						transitions={'done':'done'})
         #smach.StateMachine.add('RateChange', RateChange(3),
        # 						transitions={'done':'SUB2'})

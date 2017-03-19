@@ -1,7 +1,7 @@
 <launch>
 	<node pkg="rosserial_python" type="serial_node.py" name="serial_node" output="screen">
 		<param name="port" value="/dev/ttyACM99"/>
-		<param name="baud" value="230400"/>
+		<param name="baud" value="57600"/>
 
 
 		<!--<param name="KP" value="5000"/>
@@ -50,5 +50,13 @@
   	</node>
 
   	<node pkg="joy" type="joy_node" name="joystick"/>
+
+  	<node name="roberto_snake_sensorv3" pkg="roberto_linesensor" type="roberto_snake_sensorv3" respawn="false" output="screen">
+    	<remap from="image" to="/usb_cam/image_raw"/>
+    	<param name="autosize" value="true" />
+	</node>
+  	
+  	<node name="roberto_statemachine" pkg="roberto_statemachine" type="state_machine.py" output="screen"/>
+
 
 </launch>

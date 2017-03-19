@@ -1,5 +1,0 @@
-
-<launch>
-  <node name="roberto_statemachine" pkg="roberto_statemachine" type="state_machine.py" output="screen"/>
-
-</launch>

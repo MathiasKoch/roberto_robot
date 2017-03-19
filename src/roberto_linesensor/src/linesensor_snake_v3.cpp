@@ -1,6 +1,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Int32.h"
+#include "std_msgs/Float32.h"
 #include "roberto_msgs/Line.h"
 #include "roberto_msgs/MotorState.h"
 #include <image_transport/image_transport.h>
@@ -47,11 +48,12 @@ ros::Publisher motor_pub;
 
 int linesensor_angle;
 
-float speed = 0.5;
+float speed = 0.0;
 
 int lostCounter = 0;
 float lostSpinSpeed = 0.2;
 int lineLastSeen = 0;
+bool running = false;
 
 // Prototypes
 void findLine(cv::Mat sampled, bool wrap);
@@ -62,8 +64,19 @@ void sampleCircle(cv::Mat image, cv::Point center);
 void findLine(cv::Mat sampled, bool wrap);
 void imageCallback(const sensor_msgs::ImageConstPtr& msg);
 
+void activateCallback(const std_msgs::Float32& msg){
+    speed = msg.data;
+    if(speed > 0)
+        running = true;
+    else
+        running = false;
+    cout << "Speed: " << speed << endl;
+}
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg){
+    if(!running){
+        return;
+    }
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
     cv_bridge::CvImagePtr cv_ptr;
@@ -177,8 +190,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
         //driveTowards in original image pixels
         driveTowards = (driveTowards - image.cols/2)*4;
 
-        //rescale between 0.5 and 1
-        speedMultiplier = std::min(std::max((200-abs(driveTowards))/200.0f, 0.6f), 1.0f);
+        //rescale between 0.6 and 1
+        speedMultiplier = std::min(std::max(((image.cols*4)-abs(driveTowards))/(image.cols*4.0f), 0.5f), 1.0f);
 
         //cout << "speedMultiplier " << speedMultiplier << ", " << ((15-driveTowards)/15.0f)<< endl;
 
@@ -195,7 +208,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
     //cout << "speedMultiplier " << speedMultiplier << endl;
 
     if(speed != 0){
-        if(lostCounter < 5){
+        if(lostCounter < 3){
             roberto_msgs::MotorState motor_msg;
             motor_msg.speed = speed*speedMultiplier;
             motor_msg.heading_angle = -driveTowards*pixel2Angle;
@@ -422,6 +435,7 @@ int main(int argc, char **argv)
     motor_pub = nh.advertise<roberto_msgs::MotorState>("cmd_vel",1);
     //pubS = it.advertise("usb_cam/sampled", 1);
     image_transport::Subscriber sub = it.subscribe("usb_cam/image_raw", 1, imageCallback);
+    ros::Subscriber sub_sm = nh.subscribe("linesensor_active", 1, activateCallback);
     //first_scanpoint = Point(FRAME_WIDTH/2, scan_height_reg);
     //debug_mode=1;
     ros::spin();
