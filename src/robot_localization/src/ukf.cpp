@@ -282,7 +282,7 @@ namespace RobotLocalization
     }
   }
 
-  void Ukf::predict(const double delta)
+  void Ukf::predict(const double referenceTime, const double delta)
   {
     FB_DEBUG("---------------------- Ukf::predict ----------------------\n" <<
              "delta is " << delta <<
@@ -293,18 +293,16 @@ namespace RobotLocalization
     double yaw = state_(StateMemberYaw);
 
     // We'll need these trig calculations a lot.
-    double sp = 0.0;
-    double cp = 0.0;
-    ::sincos(pitch, &sp, &cp);
+    double sp = ::sin(pitch);
+    double cp = ::cos(pitch);
 
-    double sr = 0.0;
-    double cr = 0.0;
-    ::sincos(roll, &sr, &cr);
+    double sr = ::sin(roll);
+    double cr = ::cos(roll);
 
-    double sy = 0.0;
-    double cy = 0.0;
-    ::sincos(yaw, &sy, &cy);
+    double sy = ::sin(yaw);
+    double cy = ::cos(yaw);
 
+    prepareControl(referenceTime, delta);
 
     // Prepare the transfer function
     transferFunction_(StateMemberX, StateMemberVx) = cy * cp * delta;
@@ -373,7 +371,15 @@ namespace RobotLocalization
 
     // (5) Not strictly in the theoretical UKF formulation, but necessary here
     // to ensure that we actually incorporate the processNoiseCovariance_
-    estimateErrorCovariance_.noalias() += delta * processNoiseCovariance_;
+    Eigen::MatrixXd *processNoiseCovariance = &processNoiseCovariance_;
+
+    if (useDynamicProcessNoiseCovariance_)
+    {
+      computeDynamicProcessNoiseCovariance(state_, delta);
+      processNoiseCovariance = &dynamicProcessNoiseCovariance_;
+    }
+
+    estimateErrorCovariance_.noalias() += delta * (*processNoiseCovariance);
 
     // Keep the angles bounded
     wrapStateAngles();

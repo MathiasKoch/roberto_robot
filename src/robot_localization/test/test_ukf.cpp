@@ -75,6 +75,7 @@ TEST(UkfTest, Measurements)
   }
 
   Eigen::MatrixXd measurementCovariance(STATE_SIZE, STATE_SIZE);
+  measurementCovariance.setIdentity();
   for (size_t i = 0; i < STATE_SIZE; ++i)
   {
     measurementCovariance(i, i) = 1e-9;
@@ -92,7 +93,7 @@ TEST(UkfTest, Measurements)
                          std::numeric_limits<double>::max(),
                          time);
 
-  ukf.integrateMeasurements(1001);
+  ukf.integrateMeasurements(ros::Time(1001));
 
   EXPECT_EQ(ukf.getFilter().getState(), measurement);
   EXPECT_EQ(ukf.getFilter().getEstimateErrorCovariance(), measurementCovariance);
@@ -120,7 +121,7 @@ TEST(UkfTest, Measurements)
                          std::numeric_limits<double>::max(),
                          time);
 
-  ukf.integrateMeasurements(1003);
+  ukf.integrateMeasurements(ros::Time(1003));
 
   measurement = measurement2.eval() - ukf.getFilter().getState();
   for (size_t i = 0; i < STATE_SIZE; ++i)

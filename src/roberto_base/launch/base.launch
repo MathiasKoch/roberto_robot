@@ -27,11 +27,6 @@
 		<param name="autosize" value="true" />
 	</node>-->
 
-	<node pkg="roberto_i2c" type="roberto_i2c" name="i2c_node" output="screen" >
-	    <rosparam file="$(find roberto_i2c)/param/imu.yaml"/>
-		<param name="gpio_expander_address" value="56"/>
-		<param name="interrupt_pin" value="204"/>
-	</node>
 
 	<node name="roberto_menu" pkg="roberto_menu" type="display_publisher.py" output="screen"/>
 

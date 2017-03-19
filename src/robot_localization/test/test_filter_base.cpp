@@ -66,7 +66,7 @@ class FilterDerived : public FilterBase
       }
     }
 
-    void predict(const double delta)
+    void predict(const double refTime, const double delta)
     {
       val = delta;
     }
@@ -81,7 +81,7 @@ class FilterDerived2 : public FilterBase
     {
     }
 
-    void predict(const double delta)
+    void predict(const double refTime, const double delta)
     {
     }
 
@@ -160,6 +160,7 @@ TEST(FilterBaseTest, DerivedFilterGetSet)
     EXPECT_EQ(derived.getProcessNoiseCovariance(), pnCovar);
 
     Eigen::VectorXd state(STATE_SIZE);
+    state.setZero();
     derived.setState(state);
     EXPECT_EQ(derived.getState(), state);
 
